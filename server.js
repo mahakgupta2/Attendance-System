@@ -110,12 +110,15 @@ const verifyStaff = (req, res, next) => {
 };
 
 // ===================== RATE LIMITERS =====================
+// Render uses a reverse proxy — trust it so rate-limit & IP detection work correctly
+app.set("trust proxy", 1);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20,
   message: { error: "Too many login attempts. Please wait 15 minutes and try again." },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 const registerLimiter = rateLimit({
@@ -124,6 +127,7 @@ const registerLimiter = rateLimit({
   message: { error: "Too many registration attempts. Try again later." },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 const attendanceLimiter = rateLimit({
@@ -132,6 +136,7 @@ const attendanceLimiter = rateLimit({
   message: { error: "Too many attendance requests. Please slow down." },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 const generalLimiter = rateLimit({
@@ -140,6 +145,7 @@ const generalLimiter = rateLimit({
   message: { error: "Too many requests. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 // ===================== MIDDLEWARES =====================
