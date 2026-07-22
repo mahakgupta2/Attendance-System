@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Scanner App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- HTML5 QrCode Scanner -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- Face API for Liveness Detection -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <style>
+    /* Custom Animations and Glassmorphism */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1.5rem;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    @keyframes scan {
+      0% { top: 0%; box-shadow: 0 0 10px 2px rgba(236, 72, 153, 0.8); }
+      50% { top: 100%; box-shadow: 0 0 10px 2px rgba(236, 72, 153, 0.8); }
+      100% { top: 0%; box-shadow: 0 0 10px 2px rgba(236, 72, 153, 0.8); }
+    }
+    /* Hide HTML5 QrCode branding links */
+    #reader a { display: none !important; }
+    /* Fix video layout */
+    #reader video {
+      width: 100% !important;
+      max-height: 400px !important;
+      object-fit: cover !important;
+    }
+  </style>
+</head>
+<body class="text-white min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style="background: radial-gradient(circle at top right, #1e1b4b, #0f172a, #020617);">
+  <!-- Persistent Floating Nav -->
+  <div class="fixed top-4 right-4 z-[9999] flex flex-wrap gap-2 justify-end">
+    <a href="/index.html" class="bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-full backdrop-blur-md shadow-lg border border-indigo-400/30 transition-all text-center flex items-center justify-center">🏠 Home</a>
+    <a href="/index.html" class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-full backdrop-blur-md shadow-lg border border-blue-400/30 transition-all text-center flex items-center justify-center">🔑 Login Portal</a>
+  </div>
+  
+  <!-- Decorative Background Elements -->
+  <div class="absolute -top-32 -right-32 w-96 h-96 bg-purple-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse"></div>
+  <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-pink-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse" style="animation-delay: 2s;"></div>
+
+  <div class="glass-card w-full max-w-md p-8 shadow-2xl relative z-10 transition-all duration-300 transform">
+
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg mb-4 transform rotate-3">
+        <span class="text-3xl filter drop-shadow-md">😎</span>
+      </div>
+      <h1 class="text-3xl font-extrabold mb-2 gradient-text tracking-tight">Access Terminal</h1>
+      <p class="text-gray-400 text-sm font-medium" id="status-text">Enter your ID to begin verification</p>
+    </div>
+
+    <!-- Step 1: Student ID Input -->
+    <div id="step-id" class="transition-opacity duration-500 mb-2">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2" for="studentId">Student ID Roll No.</label>
+          <input type="text" id="studentId" placeholder="e.g. S123456" 
+                 class="w-full bg-slate-900/60 text-white px-5 py-4 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all font-mono text-center tracking-widest text-lg uppercase shadow-inner placeholder-gray-600">
+        </div>
+        <button onclick="startScanner()" 
+                class="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-purple-900/50 hover:shadow-pink-900/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none uppercase tracking-wider text-sm">
+          Initialize Scanner
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: QR Scanner -->
+    <div id="step-qr" class="hidden transition-opacity duration-500">
+      <div id="reader" class="w-full bg-black/50 rounded-2xl overflow-hidden border border-purple-500/30 relative min-h-[300px] shadow-inner mb-4 backdrop-blur-sm"></div>
+      <button onclick="location.reload()" class="w-full mt-2 text-gray-400 hover:text-white text-xs text-center transition-colors">← Cancel & Go Back</button>
+    </div>
+
+    <!-- Step 3: Face Liveness -->
+    <div id="step-face" class="hidden transition-opacity duration-500 flex flex-col items-center w-full">
+      <div class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border-2 border-pink-500/40 shadow-xl shadow-pink-900/20 mb-6 group">
+        <video id="video" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline muted></video>
+        <!-- Canvas Overlay for face-api landmarks -->
+        <canvas id="overlay" class="absolute top-0 left-0 w-full h-full transform scale-x-[-1] pointer-events-none opacity-50"></canvas>
+        <!-- Scanning line effect -->
+        <div id="scan-line" class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-pink-400 to-transparent opacity-80" style="animation: scan 2.5s infinite linear;"></div>
+      </div>
+
+      <div class="w-full bg-slate-900/80 rounded-full h-2.5 mb-5 overflow-hidden shadow-inner border border-white/5">
+        <div id="progress-bar" class="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(236,72,153,0.8)]" style="width: 10%"></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 w-full text-sm font-semibold mb-4">
+        <div id="check-blink" class="flex flex-col items-center justify-center gap-1 bg-slate-800/50 rounded-xl p-3 border border-slate-700 text-slate-500 transition-all duration-500">
+          <span class="text-2xl mb-1 filter grayscale">👀</span> 
+          <span class="uppercase tracking-wider text-xs">Blink</span>
+        </div>
+        <div id="check-smile" class="flex flex-col items-center justify-center gap-1 bg-slate-800/50 rounded-xl p-3 border border-slate-700 text-slate-500 transition-all duration-500">
+          <span class="text-2xl mb-1 filter grayscale">😊</span> 
+          <span class="uppercase tracking-wider text-xs">Smile</span>
+        </div>
+      </div>
+
+      <div class="bg-purple-900/30 border border-purple-500/30 rounded-lg px-4 py-2 w-full text-center shadow-inner">
+        <p id="liveness-msg" class="text-pink-300 text-xs font-bold uppercase tracking-widest animate-pulse min-h-[16px]">Initializing Neural Vision...</p>
+      </div>
+    </div>
+
+    <!-- Step 4: Loading / Result -->
+    <div id="step-result" class="hidden transition-opacity duration-500 text-center py-6">
+      <div id="loader" class="mx-auto w-16 h-16 relative hidden mb-6">
+        <div class="absolute inset-0 rounded-full border-4 border-slate-700 border-t-pink-500 animate-spin"></div>
+        <div class="absolute inset-2 rounded-full border-4 border-slate-700 border-b-purple-500 animate-[spin_1.5s_linear_reverse]"></div>
+      </div>
+      
+      <div id="result-icon" class="text-6xl mb-4 hidden"></div>
+      
+      <p id="result-message" class="text-xl font-medium text-white mb-6 tracking-wide"></p>
+      
+      <button onclick="location.reload()" 
+              class="bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 px-8 rounded-xl transition-colors border border-slate-600 shadow-md">
+        Scan Another Student
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    // Config & Globals
+    const MODELS_URI = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+    let html5QrcodeScanner = null;
+    let studentIdValue = null;
+    let qrData = null;
+    
+    // Elements
+    const video = document.getElementById("video");
+    const overlay = document.getElementById("overlay");
+    const statusText = document.getElementById("status-text");
+    
+    // State
+    let modelsLoaded = false;
+    let isDetecting = false;
+    let hasBlinked = false;
+    let hasSmiled = false;
+    let livenessComplete = false;
+    let captureReady = false;
+    let hasNotifiedUser = false;
+    window.liveDescriptor = null; // initialized globally
+
+    // EAR blink detection
+    const EAR_THRESHOLD = 0.31;
+    let blinkCounter = 0;
+
+    // Background Model Loading (faceRecognitionNet added for face matching)
+    async function initFaceModels() {
+      try {
+        console.log("Downloading advanced facial verification models...");
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URI),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URI),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODELS_URI),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URI)  // ✅ for 128-D descriptor
+        ]);
+        modelsLoaded = true;
+        console.log("Neural models initialized successfully.");
+      } catch (err) {
+        console.error("Failed to load AI models:", err);
+      }
+    }
+    initFaceModels();
+
+    function showStep(stepId) {
+      document.getElementById("step-id").classList.add("hidden");
+      document.getElementById("step-qr").classList.add("hidden");
+      document.getElementById("step-face").classList.add("hidden");
+      document.getElementById("step-result").classList.add("hidden");
+      document.getElementById(stepId).classList.remove("hidden");
+      
+      // small delay to allow display:block before opacity transition (if needed)
+      setTimeout(() => {
+        document.getElementById(stepId).classList.remove("opacity-0");
+      }, 50);
+    }
+
+    // Flow Step 1: Init scanner
+    function startScanner() {
+      const idInput = document.getElementById("studentId").value.trim().toUpperCase();
+      if (!idInput) {
+        alert("Please enter a valid Student ID");
+        return;
+      }
+      studentIdValue = idInput;
+      
+      showStep("step-qr");
+      statusText.innerHTML = `Identified as <span class="text-pink-400 font-bold">${studentIdValue}</span> | Awaiting QR`;
+
+      html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 220 } }, false);
+      html5QrcodeScanner.render(onScanSuccess, onScanError);
+    }
+
+    // Flow Step 2: QR Found
+    function onScanSuccess(decodedText) {
+      html5QrcodeScanner.clear();
+      qrData = decodedText;
+      statusText.innerHTML = 'Security Check: <span class="text-purple-400">Verifying Liveness</span>';
+      showStep("step-face");
+      startFaceDetection();
+    }
+
+    function onScanError(err) { /* ignore quiet scanning errors */ }
+
+    // EAR Formula
+    function distance(p1, p2) {
+      return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+    function calculateEAR(eye) {
+      return (distance(eye[1], eye[5]) + distance(eye[2], eye[4])) / (2.0 * distance(eye[0], eye[3]));
+    }
+
+    // Flow Step 3: Trigger Camera & Detection Loop
+    async function startFaceDetection() {
+      if (!modelsLoaded) {
+        document.getElementById("liveness-msg").innerText = "Downloading Neural Models (Please wait)...";
+        await initFaceModels();
+      }
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+        .then(stream => {
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          console.error("Camera error:", err);
+          alert("Could not access the camera. Liveness check cannot proceed.");
+          location.reload();
+        });
+
+      video.addEventListener('play', () => {
+        overlay.width = video.videoWidth || video.clientWidth;
+        overlay.height = video.videoHeight || video.clientHeight;
+
+        isDetecting = true;
+        document.getElementById("liveness-msg").innerText = "Align your face in the frame";
+        document.getElementById("progress-bar").style.width = "25%";
+        detectLoop();
+      });
+    }
+
+    function markTaskComplete(taskId) {
+       const el = document.getElementById(taskId);
+       el.classList.replace("text-slate-500", "text-green-400");
+       el.classList.replace("border-slate-700", "border-green-500");
+       el.classList.replace("bg-slate-800/50", "bg-green-900/30");
+       el.classList.add("shadow-[0_0_15px_rgba(74,222,128,0.2)]");
+       // Target the text label (second span child), not the emoji (first span child)
+       const spans = el.querySelectorAll("span");
+       if (spans.length >= 2) spans[spans.length - 1].classList.remove("grayscale");
+       else if (spans.length === 1) spans[0].classList.remove("grayscale");
+    }
+
+    async function detectLoop() {
+      if (!isDetecting || livenessComplete) return;
+
+      const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 }))
+        .withFaceLandmarks()
+        .withFaceExpressions();
+
+      if (detection) {
+        // 1. Check Smile
+        if (detection.expressions.happy > 0.6 && !hasSmiled) {
+          hasSmiled = true;
+          markTaskComplete("check-smile");
+        }
+        
+        // 2. Check Blink via EAR
+        const lm = detection.landmarks;
+        const ear = (calculateEAR(lm.getLeftEye()) + calculateEAR(lm.getRightEye())) / 2.0;
+        if (ear < EAR_THRESHOLD) {
+          blinkCounter++;
+        } else {
+          if (blinkCounter >= 1 && !hasBlinked) {
+            hasBlinked = true;
+            markTaskComplete("check-blink");
+          }
+          blinkCounter = 0;
+        }
+
+        // Update messages
+        if (!hasNotifiedUser) {
+          document.getElementById("liveness-msg").innerText = "Face Active — Please BLINK & SMILE";
+          hasNotifiedUser = true;
+        }
+        if (hasSmiled && !hasBlinked) {
+          document.getElementById("liveness-msg").innerText = "Great Smile! Now BLINK your eyes 👀";
+          document.getElementById("progress-bar").style.width = "60%";
+        } else if (!hasSmiled && hasBlinked) {
+          document.getElementById("liveness-msg").innerText = "Blink detected! Now SMILE 😊";
+          document.getElementById("progress-bar").style.width = "60%";
+        } else if (!hasSmiled && !hasBlinked) {
+          document.getElementById("progress-bar").style.width = "40%";
+        }
+
+        // 3. Both done → Extract descriptor & Complete!
+        if (hasSmiled && hasBlinked && !captureReady) {
+          captureReady = true;
+          document.getElementById("progress-bar").style.width = "90%";
+          document.getElementById("liveness-msg").innerText = "Liveness OK! Running Face Match...";
+          document.getElementById("liveness-msg").classList.replace("text-pink-300", "text-yellow-300");
+          document.getElementById("scan-line").style.display = "none";
+
+          // ✅ Extract 128-D face descriptor from THIS live frame
+          try {
+            const descDetection = await faceapi
+              .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+              .withFaceLandmarks()
+              .withFaceDescriptor();
+
+            if (descDetection) {
+              window.liveDescriptor = Array.from(descDetection.descriptor); // Float32Array → plain array
+              document.getElementById("liveness-msg").innerText = "Face vector captured ✅ Syncing...";
+            } else {
+              window.liveDescriptor = null;
+              document.getElementById("liveness-msg").innerText = "Could not extract face — proceeding anyway";
+            }
+          } catch (e) {
+            console.warn("Descriptor extraction error:", e);
+            window.liveDescriptor = null;
+          }
+
+          document.getElementById("progress-bar").style.width = "100%";
+          document.getElementById("liveness-msg").classList.replace("text-yellow-300", "text-green-400");
+
+          setTimeout(() => {
+            livenessComplete = true;
+            isDetecting = false;
+            captureAndSubmit();
+          }, 600);
+          return;
+        }
+      } else {
+        document.getElementById("liveness-msg").innerText = "Face lost! Please look into the camera.";
+      }
+
+      // Loop
+      if (!livenessComplete) {
+        requestAnimationFrame(detectLoop);
+      }
+    }
+
+    // Flow Step 4: Submission
+    function captureAndSubmit() {
+      // Capture the frame on a hidden canvas
+      let canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      let ctx = canvas.getContext("2d");
+      
+      // Mirror the context so we don't save a backwards image
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      let imageData = canvas.toDataURL("image/jpeg", 0.6);
+
+      // Turn off camera light
+      if (video.srcObject) {
+         video.srcObject.getTracks().forEach(track => track.stop());
+      }
+
+      statusText.innerHTML = "Finalizing Attendance Record...";
+      showStep("step-result");
+      document.getElementById("loader").classList.remove("hidden");
+      document.getElementById("result-icon").classList.add("hidden");
+      document.getElementById("result-message").innerText = "Encrypting and syncing data...";
+      document.getElementById("result-message").className = "text-lg font-medium text-gray-300 mb-6";
+
+      // ✅ POST — include live face descriptor for server-side face matching
+      fetch("/markAttendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: qrData,
+          studentId: studentIdValue,
+          image: imageData,
+          descriptor: window.liveDescriptor || []  // 128-D vector from live face
+        })
+      })
+      .then(async res => {
+        let data;
+        try { data = await res.json(); } catch(e) { data = { error: "Unexpected server response" }; }
+        const msg = data.message || data.error || "Unknown response";
+        document.getElementById("loader").classList.add("hidden");
+        let resultEl = document.getElementById("result-message");
+        let iconEl = document.getElementById("result-icon");
+
+        iconEl.classList.remove("hidden");
+        resultEl.innerText = msg;
+
+        if (res.ok && data.message) {
+          iconEl.innerHTML = "✅";
+          resultEl.className = "text-2xl font-bold mt-4 text-green-400 text-center drop-shadow-md";
+        } else if (res.status === 400 && msg.toLowerCase().includes("already")) {
+          // Already marked = warning
+          iconEl.innerHTML = "⚠️";
+          resultEl.className = "text-xl font-bold mt-4 text-yellow-400 text-center";
+        } else {
+          // error = hard failure
+          iconEl.innerHTML = "🚫";
+          resultEl.className = "text-xl font-bold mt-4 text-red-400 text-center";
+        }
+      })
+      .catch(err => {
+        document.getElementById("loader").classList.add("hidden");
+        let iconEl = document.getElementById("result-icon");
+        let resultEl = document.getElementById("result-message");
+        
+        console.error(err);
+        iconEl.classList.remove("hidden");
+        iconEl.innerHTML = "❌";
+        resultEl.innerText = "Connection lost. Please try again.";
+        resultEl.className = "text-xl font-bold mt-4 text-red-500";
+      });
+    }
+  </script>
+</body>
+</html>

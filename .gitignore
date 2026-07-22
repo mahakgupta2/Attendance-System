@@ -1,0 +1,57 @@
+# ============================================================
+# .gitignore — Attendance System
+# Ye files GitHub pe PUSH NAHI hongi
+# ============================================================
+
+# --- Node.js Dependencies ---
+node_modules/
+
+# --- Environment Variables (SENSITIVE — kabhi bhi push mat karo!) ---
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# --- Security / Certificates ---
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+
+# --- Database Export / Dumps ---
+db_out.json
+*.sql
+*.dump
+*.bak
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor / IDE Files ---
+.vscode/
+.idea/
+*.suo
+*.swp
+*.swo
+*~
+
+# --- Temporary Files ---
+tmp/
+temp/
+*.tmp
+*.temp
+
+# --- Build Output (agar kabhi build karo) ---
+dist/
+build/

@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Dashboard - Attendance System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.5rem;
+    }
+    .glass-table {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid rgba(168, 85, 247, 0.15);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tab-btn { transition: all 0.3s ease; }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+      border-color: rgba(236, 72, 153, 0.5) !important;
+      color: white !important;
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.2);
+    }
+    .stat-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+      border-radius: 1rem;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(236, 72, 153, 0.4); border-radius: 10px; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+    
+    /* Light Theme Overrides */
+    body.light-theme {
+      background: radial-gradient(circle at top right, #f3e8ff, #e2e8f0, #f8fafc) !important;
+      color: #0f172a !important;
+    }
+    body.light-theme .glass-card {
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+    }
+    body.light-theme .glass-table {
+      background: rgba(255, 255, 255, 0.5);
+      border-color: rgba(168, 85, 247, 0.2);
+    }
+    body.light-theme .text-white { color: #0f172a !important; }
+    body.light-theme .text-gray-400, body.light-theme .text-slate-400 { color: #475569 !important; }
+    body.light-theme .bg-slate-900\/40, body.light-theme .bg-slate-900\/60 {
+      background: rgba(255, 255, 255, 0.6) !important;
+    }
+    body.light-theme select, body.light-theme input {
+      background: rgba(255, 255, 255, 0.9) !important;
+      color: #0f172a !important;
+      border-color: rgba(168, 85, 247, 0.3) !important;
+    }
+    body.light-theme .border-white\/10, body.light-theme .border-white\/5 {
+      border-color: rgba(0,0,0,0.1) !important;
+    }
+    body.light-theme .bg-purple-900\/30 {
+      background: rgba(216, 180, 254, 0.4) !important;
+    }
+    body.light-theme .text-pink-300 { color: #c026d3 !important; }
+    body.light-theme .text-purple-300 { color: #9333ea !important; }
+    body.light-theme .text-purple-200 { color: #7e22ce !important; }
+  </style>
+</head>
+
+<body class="text-white min-h-screen py-6 px-4 flex flex-col items-center relative overflow-x-hidden transition-colors duration-500" style="background: radial-gradient(circle at top right, #1e1b4b, #0f172a, #020617);">
+  
+  <!-- Theme Toggle -->
+  <button id="themeToggle" onclick="toggleTheme()" class="fixed top-4 right-4 z-50 p-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full shadow-lg backdrop-blur-md transition-all text-xl cursor-pointer">
+    ☀️
+  </button>
+  <div class="fixed top-0 right-0 w-[500px] h-[500px] bg-purple-600 rounded-full mix-blend-screen filter blur-[120px] opacity-20 animate-pulse pointer-events-none"></div>
+  <div class="fixed bottom-0 left-0 w-[500px] h-[500px] bg-pink-600 rounded-full mix-blend-screen filter blur-[120px] opacity-20 animate-pulse pointer-events-none" style="animation-delay: 2s;"></div>
+
+  <div class="glass-card w-full max-w-6xl p-5 md:p-8 shadow-2xl relative z-10">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div class="flex items-center gap-4">
+        <div class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg transform rotate-3">
+          <span class="text-2xl filter drop-shadow-md">👨‍🏫</span>
+        </div>
+        <div>
+          <h1 class="text-3xl font-extrabold gradient-text tracking-tight">Teacher Portal</h1>
+          <p class="text-gray-400 text-sm font-medium">Logged in as: <span id="teacherName" class="text-pink-400 font-bold">Admin</span></p>
+        </div>
+      </div>
+      <!-- Quick Stats / Date -->
+      <div class="flex flex-wrap gap-3 items-center">
+        <div>
+          <input type="date" id="dateFilter" onchange="refreshCurrentTab()" style="color-scheme: dark;"
+                 class="bg-slate-900/60 text-pink-300 font-mono text-sm px-4 py-2.5 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 shadow-inner cursor-pointer">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div class="flex gap-2 mb-6 flex-wrap border-b border-white/10 pb-4">
+      <button id="tabDashboard" onclick="switchTab('dashboard')" class="tab-btn active px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📊 Dashboard
+      </button>
+      <button id="tabMark" onclick="switchTab('mark')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        ✅ Mark Attendance
+      </button>
+      <button id="tabAlerts" onclick="switchTab('alerts')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        🚨 Alerts
+      </button>
+      <button id="tabReports" onclick="switchTab('reports')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📈 Reports
+      </button>
+      <button id="tabSubjects" onclick="switchTab('subjects')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📚 Subjects
+      </button>
+      <button id="tabLeaves" onclick="switchTab('leaves')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📝 Leaves
+      </button>
+      <button id="tabStudents" onclick="switchTab('students')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        👥 Students
+      </button>
+    </div>
+
+    <!-- ============= TAB VIEWS ============= -->
+
+    <!-- Dashboard (Class Filters & SMS) -->
+    <div id="viewDashboard">
+      <div class="flex justify-between items-center mb-4">
+        <div class="flex gap-4">
+          <select id="dashClassFilter" onchange="fetchDashboard()" class="bg-slate-900/60 text-white px-4 py-2 rounded-xl border border-purple-500/30 text-sm focus:border-pink-500">
+            <option value="">All Classes</option>
+            <option value="BTECH">B.Tech</option>
+            <option value="BCA">BCA</option>
+          </select>
+          <select id="dashSubjectFilter" class="bg-slate-900/60 text-white px-4 py-2 rounded-xl border border-purple-500/30 text-sm focus:border-pink-500">
+            <option value="">All Subjects</option>
+          </select>
+        </div>
+        <button onclick="sendAbsentEmail()" class="flex items-center justify-center gap-2 bg-purple-600/40 hover:bg-purple-600/60 text-purple-200 border border-purple-500/50 px-4 py-2 rounded-xl text-sm font-bold transition">
+          📧 Email Absentees
+        </button>
+      </div>
+
+      <div class="glass-table overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-purple-900/30 border-b border-purple-500/30 text-xs uppercase tracking-widest text-purple-300 font-semibold">
+                <th class="p-4 px-6">Roll No</th>
+                <th class="p-4 px-6">Class/Subject</th>
+                <th class="p-4 px-6">Date & Time</th>
+                <th class="p-4 px-6 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardBody" class="font-mono text-sm">
+              <tr><td colspan="4" class="p-10 text-center text-gray-400">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mark Attendance (QR + Manual) -->
+    <div id="viewMark" class="hidden animate-fade-in-up">
+      <div class="grid md:grid-cols-2 gap-6">
+        
+        <!-- Live QR Section -->
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5">
+          <h3 class="text-md font-bold text-pink-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">📷 Live QR Generator</h3>
+          <select id="qrSubjectSelect" class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 text-sm mb-4">
+            <option value="">-- Select Subject --</option>
+          </select>
+          <button onclick="handleQRGen()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all text-sm uppercase mb-4">
+            Generate QR
+          </button>
+          
+          <div id="qrDisplay" class="hidden flex flex-col items-center p-4 bg-black/40 rounded-xl border border-pink-500/30">
+            <img id="qrImage" src="" class="w-48 h-48 bg-white p-2 rounded-lg" />
+            <p id="qrSubjectLabel" class="mt-3 font-bold text-pink-400 tracking-wider text-xl"></p>
+            <p class="text-xs text-gray-400 mt-1">Valid for 2 minutes</p>
+          </div>
+          <p id="qrGenErr" class="text-red-400 text-sm font-bold mt-2 text-center"></p>
+        </div>
+
+        <!-- Manual Override Section -->
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5">
+          <h3 class="text-md font-bold text-purple-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">✍️ Manual Override</h3>
+          <select id="manualSubjectSelect" onchange="loadManualStudents()" class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 text-sm mb-4">
+            <option value="">-- Select Subject --</option>
+          </select>
+          <div class="flex gap-2 mb-4">
+            <button onclick="markAllManual('present')" class="flex-1 py-2 text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg">✅ All Present</button>
+            <button onclick="markAllManual('absent')" class="flex-1 py-2 text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg">❌ All Absent</button>
+          </div>
+          
+          <div id="manualList" class="space-y-2 max-h-64 overflow-y-auto pr-2 mb-4">
+            <div class="text-center text-gray-500 text-sm py-8">Select subject to load students</div>
+          </div>
+          
+          <button onclick="saveManualAttendance()" class="w-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 text-white font-bold py-3 rounded-xl uppercase text-sm">
+            💾 Save Overrides
+          </button>
+          <p id="manualSaveMsg" class="text-center font-bold text-sm h-5 mt-2"></p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Alerts (Defaulters & SMS) -->
+    <div id="viewAlerts" class="hidden">
+      <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-5 mb-6">
+        <h3 class="text-md font-bold text-red-400 uppercase tracking-wider mb-2">⚠️ Defaulters List (< 75% Attendance)</h3>
+        <p class="text-sm text-gray-400 mb-4">Students who require immediate parental notification.</p>
+        
+        <div class="glass-table overflow-hidden">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-red-900/20 border-b border-red-500/30 text-xs uppercase tracking-widest text-red-300 font-semibold">
+                <th class="p-4">Roll No</th>
+                <th class="p-4">Name</th>
+                <th class="p-4">Attendance %</th>
+                <th class="p-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="defaultersBody" class="font-sans text-sm">
+              <tr><td colspan="4" class="p-8 text-center text-gray-400">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Missing Face Descriptors Alert -->
+      <div class="bg-orange-500/10 border border-orange-500/20 rounded-xl p-5">
+        <h3 class="text-md font-bold text-orange-400 uppercase tracking-wider mb-2">📸 Incomplete Registrations (No Face)</h3>
+        <p class="text-sm text-gray-400 mb-4">In students ka face descriptor missng hai. Yeh attendance nahi laga payenge.</p>
+        
+        <div class="glass-table overflow-hidden">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-orange-900/20 border-b border-orange-500/30 text-xs uppercase tracking-widest text-orange-300 font-semibold">
+                <th class="p-4">Roll No</th>
+                <th class="p-4">Name</th>
+                <th class="p-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="noFaceBody" class="font-sans text-sm">
+              <tr><td colspan="3" class="p-8 text-center text-gray-400">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reports -->
+    <div id="viewReports" class="hidden">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-purple-300 uppercase tracking-wider mb-4">📥 Export Data</h3>
+          <p class="text-sm text-gray-400 mb-6">Download attendance records for grading and compliance.</p>
+          <div class="space-y-4">
+            <button onclick="exportCSV()" class="w-full bg-slate-800 hover:bg-slate-700 border border-blue-500/50 text-blue-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition">
+              📄 Export CSV (All Records)
+            </button>
+            <button onclick="exportPDF()" class="w-full bg-slate-800 hover:bg-slate-700 border border-red-500/50 text-red-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition">
+              📑 Export PDF (Weekly Summary)
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-pink-300 uppercase tracking-wider mb-4">📊 Analytics Overview</h3>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center border-b border-white/5 pb-2">
+              <span class="text-gray-400">Total Registered Students</span>
+              <span class="font-bold text-xl text-white" id="r_total_stud">0</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/5 pb-2">
+              <span class="text-gray-400">Average Daily Attendance</span>
+              <span class="font-bold text-xl text-green-400" id="r_avg_att">0%</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Total Defaulters</span>
+              <span class="font-bold text-xl text-red-400" id="r_defaulters">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Students (New) -->
+    <div id="viewStudents" class="hidden">
+      <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold text-pink-300 uppercase tracking-wider">👥 Manage Registered Students</h3>
+          <button onclick="fetchManageStudents()" class="text-xs font-bold px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-gray-400 hover:text-white transition">🔄 Refresh</button>
+        </div>
+        <p class="text-sm text-gray-400 mb-4">Tum yahan se unwanted ya invalid student accounts ko delete kar sakte ho.</p>
+        
+        <div class="glass-table overflow-hidden">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-purple-900/30 border-b border-purple-500/30 text-xs uppercase tracking-widest text-purple-300 font-semibold">
+                <th class="p-4">Roll No</th>
+                <th class="p-4">Name</th>
+                <th class="p-4">Parent Phone</th>
+                <th class="p-4">Registration Date</th>
+                <th class="p-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="manageStudentsBody" class="font-sans text-sm">
+              <tr><td colspan="5" class="p-8 text-center text-gray-400">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewSubjects" class="hidden">
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Add Subject -->
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-pink-300 uppercase tracking-wider mb-4">➕ Add New Subject</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-1">Subject Name</label>
+              <input type="text" id="newSubName" autocomplete="off" placeholder="e.g. Mathematics" class="w-full bg-slate-900/60 text-white px-4 py-2.5 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-1">Subject Code</label>
+              <input type="text" id="newSubCode" autocomplete="off" placeholder="e.g. MATH101" class="w-full bg-slate-900/60 text-white px-4 py-2.5 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 font-mono uppercase text-sm tracking-widest">
+            </div>
+            <div class="flex gap-4">
+              <div class="flex-1">
+                <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-1">Start Time</label>
+                <input type="time" id="newSubStart" style="color-scheme: dark;" class="w-full bg-slate-900/60 text-white px-4 py-2 rounded-xl border border-purple-500/30 focus:border-pink-500 text-sm">
+              </div>
+              <div class="flex-1">
+                <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-1">End Time</label>
+                <input type="time" id="newSubEnd" style="color-scheme: dark;" class="w-full bg-slate-900/60 text-white px-4 py-2 rounded-xl border border-purple-500/30 focus:border-pink-500 text-sm">
+              </div>
+            </div>
+            <button onclick="addSubject()" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-bold py-3 rounded-xl uppercase text-sm mt-2 transition-transform transform hover:-translate-y-0.5">
+              Add Subject
+            </button>
+          </div>
+        </div>
+        
+        <!-- List Subjects -->
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-purple-300 uppercase tracking-wider mb-4">📚 Mapped Subjects</h3>
+          <div class="glass-table overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-purple-900/30 border-b border-purple-500/30 text-xs uppercase tracking-widest text-purple-300 font-semibold">
+                  <th class="p-3">Code</th>
+                  <th class="p-3">Name</th>
+                  <th class="p-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="subjectsListBody" class="font-sans text-sm">
+                <tr><td colspan="3" class="p-6 text-center text-gray-400">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaves Management -->
+    <div id="viewLeaves" class="hidden">
+      <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-5">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-md font-bold text-yellow-300 uppercase tracking-wider">📝 Student Leave Requests</h3>
+          <button onclick="fetchLeaves()" class="text-xs font-bold px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-gray-400 hover:text-white transition">🔄 Refresh</button>
+        </div>
+        <div class="glass-table overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-yellow-900/20 border-b border-yellow-500/30 text-xs uppercase tracking-widest text-yellow-300 font-semibold">
+                  <th class="p-4">Student ID</th>
+                  <th class="p-4">Subject</th>
+                  <th class="p-4">Date</th>
+                  <th class="p-4">Reason</th>
+                  <th class="p-4 text-center">Proof Doc</th>
+                  <th class="p-4 text-center">Status</th>
+                  <th class="p-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="leavesAdminBody" class="font-sans text-sm">
+                <tr><td colspan="7" class="p-8 text-center text-gray-400 animate-pulse">Loading leave requests...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-between mt-8 text-xs text-slate-500 font-semibold uppercase tracking-wider">
+      <button onclick="logout()" class="hover:text-red-400 transition-colors uppercase flex items-center gap-1 text-slate-400">
+        <span>🚪</span> Logout
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-green-500/90 border-green-500',
+        info: 'bg-blue-500/90 border-blue-500',
+        error: 'bg-red-500/90 border-red-500'
+      };
+      
+      toast.className = `px-4 py-3 rounded-xl border text-white text-sm font-bold shadow-lg backdrop-blur-md transition-all duration-300 transform translate-y-10 opacity-0 ${colors[type] || colors.success}`;
+      toast.innerText = message;
+      
+      container.appendChild(toast);
+      
+      // Animate in
+      setTimeout(() => {
+        toast.classList.remove('translate-y-10', 'opacity-0');
+      }, 10);
+      
+      // Remove after 3s
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    if (!localStorage.getItem("adminAuth") || !localStorage.getItem("adminToken")) {
+      window.location.replace("/index.html");
+    }
+
+    // ✅ Validate token immediately on load — handles stale/expired tokens
+    (async function validateSession() {
+      try {
+        const res = await fetch("/admin/students", {
+          headers: { "Authorization": "Bearer " + localStorage.getItem("adminToken") }
+        });
+        if (res.status === 401 || res.status === 403) {
+          // Token is invalid/expired — force re-login
+          localStorage.removeItem("adminAuth");
+          localStorage.removeItem("adminUser");
+          localStorage.removeItem("adminToken");
+          alert("⚠️ Your session has expired. Please log in again.");
+          window.location.replace("/index.html");
+        }
+      } catch(e) { /* network error — let it proceed */ }
+    })();
+
+    document.getElementById("teacherName").innerText = localStorage.getItem("adminUser") || "Teacher";
+
+    // Theme logic
+    function toggleTheme() {
+      document.body.classList.toggle('light-theme');
+      const isLight = document.body.classList.contains('light-theme');
+      document.getElementById('themeToggle').innerText = isLight ? '🌙' : '☀️';
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    }
+    if (localStorage.getItem('theme') === 'light') {
+      document.body.classList.add('light-theme');
+      document.getElementById('themeToggle').innerText = '🌙';
+    }
+
+    // Init dates
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('dateFilter').value = todayStr;
+
+    let activeTab = 'dashboard';
+    let globalSubjects = [];
+    let manualStudentsState = {};
+
+    async function fetchWithAuth(url, options = {}) {
+      if (!options.headers) options.headers = {};
+      const token = localStorage.getItem('adminToken');
+      if (token) options.headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(url, options);
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("adminAuth");
+        localStorage.removeItem("adminUser");
+        localStorage.removeItem("adminToken");
+        window.location.replace("/index.html");
+      }
+      return res;
+    }
+
+    function logout() {
+      localStorage.removeItem("adminAuth");
+      localStorage.removeItem("adminUser");
+      localStorage.removeItem("adminToken");
+      window.location.replace("/index.html");
+    }
+
+    function switchTab(tab) {
+      if (activeTab === tab) return;
+      activeTab = tab;
+
+      const ALL_TABS  = ['tabDashboard','tabMark','tabAlerts','tabReports','tabSubjects','tabLeaves','tabStudents'];
+      const ALL_VIEWS = ['viewDashboard','viewMark','viewAlerts','viewReports','viewSubjects','viewLeaves','viewStudents'];
+
+      ALL_TABS.forEach(id  => document.getElementById(id).classList.remove('active'));
+      ALL_VIEWS.forEach(id => document.getElementById(id).classList.add('hidden'));
+
+      document.getElementById('tab'  + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+      document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+
+      refreshCurrentTab();
+    }
+
+    function refreshCurrentTab() {
+      if (activeTab === 'dashboard') fetchDashboard();
+      if (activeTab === 'mark') loadSubjects();
+      if (activeTab === 'alerts') fetchAlerts();
+      if (activeTab === 'reports') fetchReports();
+      if (activeTab === 'subjects') fetchAdminSubjects();
+      if (activeTab === 'leaves') fetchLeaves();
+      if (activeTab === 'students') fetchManageStudents();
+    }
+
+    // ================= DASHBOARD =================
+    async function fetchDashboard() {
+      try {
+        const res = await fetchWithAuth("/attendance");
+        const data = await res.json();
+        
+        const dateFilter = document.getElementById("dateFilter").value;
+        const filtered = data.filter(d => d.date === dateFilter);
+        
+        const tbody = document.getElementById("dashboardBody");
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-gray-500">No attendance records today.</td></tr>`;
+          return;
+        }
+
+        let rows = '';
+        filtered.reverse().forEach(rec => {
+          const badge = rec.status === 'present' || !rec.status
+            ? '<span class="px-2 py-1 rounded bg-green-500/15 text-green-400 font-bold text-xs">Present</span>'
+            : '<span class="px-2 py-1 rounded bg-red-500/15 text-red-400 font-bold text-xs">Absent</span>';
+          
+          rows += `
+            <tr class="border-b border-white/5 hover:bg-slate-800/40">
+              <td class="p-4 px-6 text-pink-300 font-bold">${rec.studentId}</td>
+              <td class="p-4 px-6">${rec.subjectName || rec.subject || rec.class}</td>
+              <td class="p-4 px-6 text-gray-400 text-xs">${rec.date} ${rec.time || ''}</td>
+              <td class="p-4 px-6 text-right">${badge}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = rows;
+
+        // BROWSER NOTIFICATION FOR ABSENT STUDENTS
+        const absentees = filtered.filter(rec => rec.status === 'absent');
+        if (absentees.length > 0) {
+          showBrowserNotification(absentees.length);
+        }
+
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    let lastNotificationDate = null;
+    function showBrowserNotification(absentCount) {
+      const today = new Date().toDateString();
+      if (lastNotificationDate === today) return; // Only show once per session/day
+      
+      if (!("Notification" in window)) return;
+      
+      if (Notification.permission === "granted") {
+        new Notification("Attendance System", { 
+          body: `${absentCount} student(s) are absent today. Click 'Email Absentees' to notify parents.`,
+          icon: "/favicon.ico"
+        });
+        lastNotificationDate = today;
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification("Attendance System", { 
+              body: `${absentCount} student(s) are absent today. Click 'Email Absentees' to notify parents.`,
+              icon: "/favicon.ico"
+            });
+            lastNotificationDate = today;
+          }
+        });
+      }
+    }
+
+    async function sendAbsentEmail() {
+      const date = document.getElementById("dateFilter").value;
+      const subject = document.getElementById("dashSubjectFilter").value;
+      
+      try {
+        const res = await fetchWithAuth("/admin/send-absent-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date, subject })
+        });
+        const data = await res.json();
+        if(res.ok) {
+           showToast(data.message, "success");
+        } else {
+           showToast(`Error: ${data.error}`, "error");
+        }
+      } catch (e) {
+         showToast("Network Error while sending Email", "error");
+      }
+    }
+
+    async function sendWarningEmail(studentId) {
+      try {
+        const res = await fetchWithAuth("/admin/send-warning-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message, "success");
+        } else {
+          showToast(data.error || "Failed to send warning email", "error");
+        }
+      } catch (e) {
+        showToast("Network Error while sending Email", "error");
+      }
+    }
+
+    function sendWarningWhatsApp(phone, name, percentage) {
+      if (!phone) {
+        showToast("No parent phone number found for this student.", "error");
+        return;
+      }
+      // Ensure phone number starts with country code, default to 91 for India if not present
+      let formattedPhone = phone.replace(/[^0-9]/g, '');
+      if (formattedPhone.length === 10) formattedPhone = '91' + formattedPhone;
+
+      const message = `Urgent: Low Attendance Warning.\nDear Parent, your ward ${name} has an overall attendance of ${percentage}%, which is below the 75% threshold. Please meet the HOD immediately.`;
+      const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
+    }
+
+    // ================= MARK ATTENDANCE =================
+    async function loadSubjects() {
+      if (globalSubjects.length > 0) return populateSubjectDropdowns();
+      try {
+        const res = await fetchWithAuth("/admin/subjects");
+        globalSubjects = await res.json();
+        populateSubjectDropdowns();
+      } catch (e) { console.error(e); }
+    }
+    
+    function populateSubjectDropdowns() {
+      let opts = '<option value="">-- Select --</option>';
+      globalSubjects.forEach(s => {
+        opts += `<option value="${s.code}" data-name="${s.name}">${s.name} (${s.code})</option>`;
+      });
+      document.getElementById("qrSubjectSelect").innerHTML = opts;
+      document.getElementById("manualSubjectSelect").innerHTML = opts;
+      // also populate dashboard filter
+      const dsOpts = `<option value="">All Subjects</option>` + opts.replace('-- Select --', '');
+      document.getElementById("dashSubjectFilter").innerHTML = dsOpts;
+    }
+
+    async function handleQRGen() {
+      const sel = document.getElementById("qrSubjectSelect");
+      const code = sel.value;
+      const name = sel.options[sel.selectedIndex]?.dataset.name;
+      const errEl = document.getElementById("qrGenErr");
+      
+      if (!code) { errEl.innerText = "Select a subject first"; return; }
+      errEl.innerText = "";
+      
+      try {
+        const res = await fetchWithAuth("/generateQRapi", {
+          method: "POST", headers:{ "Content-Type": "application/json" },
+          body: JSON.stringify({ subjectCode: code, subjectName: name })
+        });
+        const data = await res.json();
+        if (data.qr) {
+          document.getElementById("qrImage").src = data.qr;
+          document.getElementById("qrSubjectLabel").innerText = name;
+          document.getElementById("qrDisplay").classList.remove('hidden');
+        } else {
+          errEl.innerText = "Failed generating QR";
+        }
+      } catch (e) { errEl.innerText = "Network err"; }
+    }
+
+    async function loadManualStudents() {
+      const subj = document.getElementById("manualSubjectSelect").value;
+      const listEl = document.getElementById("manualList");
+      if (!subj) { listEl.innerHTML = '<div class="text-center text-gray-500 py-8">Select subject...</div>'; return; }
+
+      try {
+        const [studRes, attRes] = await Promise.all([ fetchWithAuth("/admin/students"), fetchWithAuth("/attendance") ]);
+        const students = await studRes.json();
+        const attendance = await attRes.json();
+        const dateVal = document.getElementById("dateFilter").value;
+
+        manualStudentsState = {};
+        
+        let html = '';
+        students.forEach(s => {
+          // find today's status
+          const rec = attendance.find(a => a.studentId === s.studentId && a.subject === subj && a.date === dateVal);
+          const currentStatus = rec ? rec.status : 'present';
+          manualStudentsState[s.studentId] = currentStatus;
+
+          html += `
+            <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg border border-white/5">
+              <span class="font-bold text-pink-300 text-sm">${s.studentId} - ${s.name || 'Unknown'}</span>
+              <div class="flex gap-2">
+                <button id="btn_p_${s.studentId}" onclick="setManualStatus('${s.studentId}', 'present')" class="px-2 py-1 rounded text-xs font-bold ${currentStatus==='present'?'bg-green-500 text-white':'bg-slate-700 text-gray-400'}">P</button>
+                <button id="btn_a_${s.studentId}" onclick="setManualStatus('${s.studentId}', 'absent')" class="px-2 py-1 rounded text-xs font-bold ${currentStatus==='absent'?'bg-red-500 text-white':'bg-slate-700 text-gray-400'}">A</button>
+              </div>
+            </div>`;
+        });
+        listEl.innerHTML = html;
+      } catch (e) { console.error(e); }
+    }
+
+    function setManualStatus(id, s) {
+      manualStudentsState[id] = s;
+      document.getElementById(`btn_p_${id}`).className = `px-2 py-1 rounded text-xs font-bold ${s==='present'?'bg-green-500 text-white':'bg-slate-700 text-gray-400'}`;
+      document.getElementById(`btn_a_${id}`).className = `px-2 py-1 rounded text-xs font-bold ${s==='absent'?'bg-red-500 text-white':'bg-slate-700 text-gray-400'}`;
+    }
+
+    function markAllManual(s) {
+      Object.keys(manualStudentsState).forEach(id => setManualStatus(id, s));
+    }
+
+    async function saveManualAttendance() {
+      const sel = document.getElementById("manualSubjectSelect");
+      const code = sel.value;
+      const name = sel.options[sel.selectedIndex]?.dataset.name;
+      const date = document.getElementById("dateFilter").value;
+      const msg = document.getElementById("manualSaveMsg");
+
+      if (!code) { msg.innerText = "Select subject"; msg.className = "text-center font-bold text-sm h-5 mt-2 text-red-400"; return; }
+
+      const records = Object.entries(manualStudentsState).map(([studentId, status]) => ({ studentId, status }));
+      
+      try {
+        const res = await fetchWithAuth("/admin/mark-subject-attendance", {
+          method: "POST", headers:{ "Content-Type": "application/json" },
+          body: JSON.stringify({ subjectCode: code, subjectName: name, date, records })
+        });
+        const d = await res.json();
+        if(res.ok) {
+          msg.innerText = "✅ Saved!"; msg.className = "text-center font-bold text-sm h-5 mt-2 text-green-400";
+        } else {
+          msg.innerText = "❌ Failed"; msg.className = "text-center font-bold text-sm h-5 mt-2 text-red-400"; 
+        }
+      } catch(e) { msg.innerText = "Network error"; }
+    }
+
+    // ================= ALERTS =================
+    async function fetchAlerts() {
+      try {
+        const res = await fetchWithAuth("/admin/defaulters");
+        const data = await res.json();
+        const tbody = document.getElementById("defaultersBody");
+
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-gray-500">No defaulters. Everyone is above 75%.</td></tr>`;
+        } else {
+          let html = '';
+          data.forEach(d => {
+            html += `
+              <tr class="border-b border-white/5 hover:bg-red-500/10">
+                <td class="p-4 font-mono font-bold text-white">${d.studentId}</td>
+                <td class="p-4">${d.name}</td>
+                <td class="p-4 font-bold text-red-400">${d.percentage}%</td>
+                <td class="p-4 text-right flex justify-end gap-2">
+                  <button onclick="sendWarningEmail('${d.studentId}')" title="Send Email" class="bg-red-500/20 hover:bg-red-500/40 text-red-300 px-3 py-1 rounded text-xs font-bold border border-red-500/30">
+                    📧 Email
+                  </button>
+                  <button onclick="sendWarningWhatsApp('${d.parentPhone}', '${d.name}', ${d.percentage})" title="Send WhatsApp" class="bg-green-500/20 hover:bg-green-500/40 text-green-300 px-3 py-1 rounded text-xs font-bold border border-green-500/30">
+                    💬 WhatsApp
+                  </button>
+                </td>
+              </tr>`;
+          });
+          tbody.innerHTML = html;
+        }
+      } catch(e) {}
+
+      // Fetch No-Face Students
+      try {
+        const res = await fetchWithAuth("/admin/students/no-face");
+        const data = await res.json();
+        const body = document.getElementById("noFaceBody");
+        if (data.length === 0) {
+          body.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-gray-500">All registered students have valid faces! 🎉</td></tr>`;
+        } else {
+          let html = '';
+          data.forEach(d => {
+            html += `
+              <tr class="border-b border-white/5 hover:bg-orange-500/10">
+                <td class="p-4 font-mono font-bold text-white">${d.studentId}</td>
+                <td class="p-4">${d.name}</td>
+                <td class="p-4 text-right">
+                  <button onclick="showToast('Reminder sent to ${d.name} to update face', 'info')" class="bg-orange-500/20 hover:bg-orange-500/40 text-orange-300 px-3 py-1 rounded text-xs font-bold border border-orange-500/30">
+                    Send Reminder
+                  </button>
+                </td>
+              </tr>`;
+          });
+          body.innerHTML = html;
+        }
+      } catch(e) {}
+    }
+
+    // ================= REPORTS =================
+    async function fetchReports() {
+      try {
+        const [studRes, attRes, defRes] = await Promise.all([
+          fetchWithAuth("/admin/students"), fetchWithAuth("/attendance"), fetchWithAuth("/admin/defaulters")
+        ]);
+        const studs = await studRes.json();
+        const atts = await attRes.json();
+        const defs = await defRes.json();
+
+        document.getElementById("r_total_stud").innerText = studs.length;
+        document.getElementById("r_defaulters").innerText = defs.length;
+        
+        let present = atts.filter(a => a.status==='present' || !a.status).length;
+        let avg = atts.length > 0 ? Math.round((present / atts.length)*100) : 0;
+        document.getElementById("r_avg_att").innerText = avg + '%';
+      } catch(e) {}
+    }
+
+    async function exportCSV() {
+      showToast("Preparing CSV file...", "info");
+      try {
+        const res = await fetchWithAuth("/attendance");
+        const data = await res.json();
+        if (data.length === 0) {
+          showToast("No records to export.", "error"); return;
+        }
+        let csv = "Student ID,Class/Subject,Date,Status\n";
+        data.forEach(rec => {
+           const classSubject = rec.subjectName || rec.subject || rec.class || '';
+           const dateTime = `${rec.date} ${rec.time || ''}`;
+           const status = rec.status || 'present';
+           csv += `"${rec.studentId}","${classSubject}","${dateTime}","${status}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast("CSV Downloaded Successfully!", "success");
+      } catch(e) {
+        showToast("Error generating CSV", "error");
+      }
+    }
+    
+    async function exportPDF() {
+      showToast("Preparing Weekly Summary for Print/PDF...", "info");
+      try {
+        const res = await fetchWithAuth("/attendance");
+        const data = await res.json();
+        
+        let html = "<html><head><title>Weekly Summary</title><style>body {font-family: Arial, sans-serif; padding: 20px;} table {width: 100%; border-collapse: collapse; margin-top: 20px;} th, td {border: 1px solid #ddd; padding: 12px; text-align: left;} th {background: #f4f4f4;}</style></head><body>";
+        html += "<h2>Weekly Attendance Summary</h2>";
+        html += "<table><thead><tr><th>Student ID</th><th>Class/Subject</th><th>Date</th><th>Status</th></tr></thead><tbody>";
+        
+        data.forEach(rec => {
+           html += `<tr><td>${rec.studentId}</td><td>${rec.subjectName || rec.subject || rec.class}</td><td>${rec.date} ${rec.time || ''}</td><td>${rec.status || 'present'}</td></tr>`;
+        });
+        
+        html += "</tbody></table></body></html>";
+        
+        const printWin = window.open('', '_blank');
+        printWin.document.write(html);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(() => { printWin.print(); }, 250);
+        showToast("Summary ready to save as PDF.", "success");
+      } catch(e) {
+        showToast("Error generating summary", "error");
+      }
+    }
+
+    // ================= LEAVES MANAGEMENT =================
+    async function fetchLeaves() {
+      const tbody = document.getElementById('leavesAdminBody');
+      try {
+        const res = await fetchWithAuth('/admin/leaves');
+        const data = await res.json();
+
+        if (!data.length) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-500">No leave requests yet.</td></tr>`;
+          return;
+        }
+
+        let html = '';
+        data.forEach(item => {
+          let badge = '';
+          let actions = '';
+
+          if (item.status === 'Pending') {
+            badge = '<span class="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">⏳ Pending</span>';
+            actions = `
+              <div class="flex gap-2 justify-end">
+                <button onclick="updateLeaveStatus('${item._id}', 'Approved')" 
+                  class="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/40 transition">
+                  ✅ Approve
+                </button>
+                <button onclick="updateLeaveStatus('${item._id}', 'Rejected')"
+                  class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 transition">
+                  ❌ Reject
+                </button>
+              </div>`;
+          } else if (item.status === 'Approved') {
+            badge = '<span class="px-2 py-1 rounded-full text-xs font-bold bg-green-500/15 text-green-400 border border-green-500/30">✅ Approved</span>';
+            actions = `<button onclick="updateLeaveStatus('${item._id}', 'Rejected')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/30 transition">↩ Revoke</button>`;
+          } else {
+            badge = '<span class="px-2 py-1 rounded-full text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30">❌ Rejected</span>';
+            actions = `<button onclick="updateLeaveStatus('${item._id}', 'Approved')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/30 transition">↩ Reconsider</button>`;
+          }
+
+          const dateFormatted = new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+          html += `
+            <tr class="border-b border-white/5 hover:bg-yellow-500/5 transition-colors">
+              <td class="p-4 font-mono font-bold text-pink-300">${item.studentId}</td>
+              <td class="p-4 text-purple-300 font-bold">${item.subjectCode}</td>
+              <td class="p-4 font-mono text-gray-300 text-xs">${item.date}<br><span class="text-gray-500">Applied: ${dateFormatted}</span></td>
+              <td class="p-4 text-gray-300 text-sm max-w-[200px]">${item.reason}</td>
+              <td class="p-4 text-center">${item.documentImage ? `<a href="${item.documentImage}" download="leave_proof_${item.date}" class="text-xs text-blue-400 underline font-bold" target="_blank">View Doc</a>` : '-'}</td>
+              <td class="p-4 text-center">${badge}</td>
+              <td class="p-4 text-right">${actions}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+      } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-500">Error loading leaves.</td></tr>`;
+        console.error(e);
+      }
+    }
+
+    async function updateLeaveStatus(id, status) {
+      try {
+        const res = await fetchWithAuth(`/admin/leaves/${id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        if (res.ok) {
+          showToast(`Leave ${status} successfully!`, status === 'Approved' ? 'success' : 'error');
+          fetchLeaves(); // Refresh table
+        } else {
+          showToast('Failed to update leave status', 'error');
+        }
+      } catch(e) {
+        showToast('Network Error', 'error');
+      }
+    }
+
+    // ================= SUBJECTS MAPPING =================
+    async function fetchAdminSubjects() {
+      try {
+        const res = await fetchWithAuth("/admin/subjects");
+        const data = await res.json();
+        globalSubjects = data; 
+        const tbody = document.getElementById("subjectsListBody");
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-gray-500">No subjects mapped yet.</td></tr>`;
+          return;
+        }
+        let html = '';
+        data.forEach(s => {
+          html += `
+            <tr class="border-b border-white/5 hover:bg-slate-800/40">
+              <td class="p-3 font-mono text-pink-300 font-bold">${s.code}</td>
+              <td class="p-3">${s.name}</td>
+              <td class="p-3 text-right">
+                <button onclick="deleteSubject('${s._id}')" class="text-red-400 hover:text-red-300 text-xs font-bold px-2 py-1 bg-red-500/10 rounded border border-red-500/20 transition-colors">Delete</button>
+              </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+        populateSubjectDropdowns(); 
+      } catch (e) {
+        showToast("Error loading subjects", "error");
+      }
+    }
+
+    async function addSubject() {
+      const name = document.getElementById("newSubName").value.trim();
+      const code = document.getElementById("newSubCode").value.trim();
+      const startTime = document.getElementById("newSubStart").value;
+      const endTime = document.getElementById("newSubEnd").value;
+      
+      if (!name || !code) return showToast("Subject Name & Code required", "error");
+      
+      try {
+        const teacherName = localStorage.getItem("adminUser") || "";
+        const res = await fetchWithAuth("/admin/subjects", {
+          method: "POST", headers:{ "Content-Type": "application/json" },
+          body: JSON.stringify({ name, code, teacherUsername: teacherName, startTime, endTime })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast("Subject mapped successfully!", "success");
+          document.getElementById("newSubName").value = '';
+          document.getElementById("newSubCode").value = '';
+          fetchAdminSubjects();
+        } else {
+          showToast(data.error || "Failed to add", "error");
+        }
+      } catch (e) {
+         showToast("Network Error", "error");
+      }
+    }
+
+    async function deleteSubject(id) {
+      if (!confirm("Are you sure you want to remove this subject?")) return;
+      try {
+        const res = await fetchWithAuth(`/admin/subjects/${id}`, { method: "DELETE" });
+        if (res.ok) {
+           showToast("Subject deleted", "success");
+           fetchAdminSubjects();
+        }
+      } catch (e) {}
+    }
+
+    // ================= MANAGE STUDENTS =================
+    async function fetchManageStudents() {
+      const tbody = document.getElementById("manageStudentsBody");
+      try {
+        const res = await fetchWithAuth("/admin/students");
+        const data = await res.json();
+        
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-400">No students registered yet.</td></tr>`;
+          return;
+        }
+
+        let html = '';
+        data.forEach(s => {
+          const dateFormatted = new Date(s.createdAt).toLocaleDateString();
+          html += `
+            <tr class="border-b border-white/5 hover:bg-slate-800/40 transition-colors">
+              <td class="p-4 font-mono font-bold text-pink-300">${s.studentId}</td>
+              <td class="p-4 font-bold text-white">${s.name || 'N/A'}</td>
+              <td class="p-4 text-gray-400">${s.parentPhone || 'N/A'}</td>
+              <td class="p-4 text-gray-400 text-xs">${dateFormatted}</td>
+              <td class="p-4 text-right">
+                <button onclick="deleteStudentAccount('${s._id}')" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs rounded-lg border border-red-500/20 transition-all">
+                  🗑️ Remove
+                </button>
+              </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-400">Error loading students</td></tr>`;
+      }
+    }
+
+    async function deleteStudentAccount(id) {
+      if (!confirm("⚠️ Are you sure you want to completely remove this student? Unka data aur face model sab delete ho jayega!")) return;
+      
+      try {
+        const res = await fetchWithAuth(`/admin/students/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast("Student successfully removed!", "success");
+          fetchManageStudents(); // Refresh list
+        } else {
+          showToast("Failed to remove student", "error");
+        }
+      } catch(e) {
+        showToast("Network Error", "error");
+      }
+    }
+
+    // Initialize
+    refreshCurrentTab();
+  </script>
+</body>
+</html>

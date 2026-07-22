@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Portal - Attendance System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Face API for face update feature -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.5rem;
+    }
+    .glass-table {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid rgba(168, 85, 247, 0.15);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tab-btn { transition: all 0.3s ease; }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+      border-color: rgba(236, 72, 153, 0.5) !important;
+      color: white !important;
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.2);
+    }
+    .stat-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+      border-radius: 1rem;
+    }
+    .subject-card {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+    .progress-bar-bg {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      border-radius: 999px;
+      transition: width 1s ease-in-out;
+    }
+    .cal-dot {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      cursor: default;
+      transition: transform 0.15s;
+    }
+    .cal-dot:hover { transform: scale(1.25); }
+    .cal-green { background: rgba(34,197,94,0.25); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .cal-red { background: rgba(239,68,68,0.25); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .cal-yellow { background: rgba(234,179,8,0.25); color: #fbbf24; border: 1px solid rgba(234,179,8,0.3); }
+    .cal-empty { background: rgba(255,255,255,0.03); color: #475569; border: 1px solid transparent; }
+    .cal-today { box-shadow: 0 0 0 2px #ec4899; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(236,72,153,0.4); border-radius: 10px; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+    @keyframes countUp { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-count { animation: countUp 0.6s ease forwards; }
+  </style>
+</head>
+
+<body class="text-white min-h-screen py-6 px-4 flex flex-col items-center relative overflow-x-hidden" style="background: radial-gradient(circle at top right, #1e1b4b, #0f172a, #020617);">
+
+  <!-- Decorative -->
+  <div class="fixed top-0 right-0 w-[500px] h-[500px] bg-purple-600 rounded-full mix-blend-screen filter blur-[120px] opacity-20 animate-pulse pointer-events-none"></div>
+  <div class="fixed bottom-0 left-0 w-[500px] h-[500px] bg-pink-600 rounded-full mix-blend-screen filter blur-[120px] opacity-20 animate-pulse pointer-events-none" style="animation-delay: 2s;"></div>
+
+  <div class="glass-card w-full max-w-5xl p-5 md:p-8 shadow-2xl relative z-10">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div class="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity" onclick="openPhotoModal()" title="View or update your photo">
+        <div class="relative w-14 h-14 rounded-2xl overflow-hidden shadow-[0_0_15px_rgba(236,72,153,0.3)] bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center border-2 border-pink-500 border-opacity-50" id="photoContainer">
+          <img id="studentPhoto" src="" alt="Student" class="w-full h-full object-cover hidden">
+          <span id="studentPhotoPlaceholder" class="text-2xl filter drop-shadow-md">🎓</span>
+        </div>
+        <div>
+          <h1 id="topStudentName" class="text-2xl md:text-3xl font-extrabold gradient-text tracking-tight mb-0.5">Student Portal</h1>
+          <p class="text-gray-400 text-sm font-medium">Roll No: <span id="studentName" class="text-pink-400 font-bold">Student</span></p>
+        </div>
+      </div>
+      <!-- Stats Row -->
+      <div class="flex flex-wrap gap-3">
+        <div class="stat-card px-4 py-2 text-center">
+          <p class="text-[10px] text-purple-300 font-bold uppercase tracking-wider mb-0.5">Subjects</p>
+          <div class="text-xl font-mono font-bold text-pink-400 animate-count" id="totalSubjects">0</div>
+        </div>
+        <div class="stat-card px-4 py-2 text-center">
+          <p class="text-[10px] text-green-300 font-bold uppercase tracking-wider mb-0.5">Present</p>
+          <div class="text-xl font-mono font-bold text-green-400 animate-count" id="totalPresent">0</div>
+        </div>
+        <div class="stat-card px-4 py-2 text-center">
+          <p class="text-[10px] text-red-300 font-bold uppercase tracking-wider mb-0.5">Absent</p>
+          <div class="text-xl font-mono font-bold text-red-400 animate-count" id="totalAbsent">0</div>
+        </div>
+        <div class="stat-card px-4 py-2 text-center">
+          <p class="text-[10px] text-blue-300 font-bold uppercase tracking-wider mb-0.5">Overall %</p>
+          <div class="text-xl font-mono font-bold text-blue-400 animate-count" id="overallPercentage">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer" class="w-full mb-5 empty:hidden"></div>
+
+    <!-- Tab Switcher -->
+    <div class="flex gap-2 mb-6 flex-wrap border-b border-white/10 pb-4">
+      <button id="tabOverview" onclick="switchTab('overview')" class="tab-btn active px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📊 Overview
+      </button>
+      <button id="tabSubjects" onclick="switchTab('subjects')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📚 Subjects
+      </button>
+      <button id="tabCalendar" onclick="switchTab('calendar')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📅 Calendar
+      </button>
+      <button id="tabScanQr" onclick="switchTab('scanQr')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📷 Scan QR
+      </button>
+      <button id="tabLeaves" onclick="switchTab('leaves')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        📝 Leaves
+      </button>
+      <button id="tabBunk" onclick="switchTab('bunk')" class="tab-btn px-4 py-2 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        🧠 Bunk Calc
+      </button>
+      <button id="tabUpdateFace" class="hidden"></button>
+    </div>
+
+    <!-- ============= TAB VIEWS ============= -->
+
+    <!-- Overview Tab -->
+    <div id="viewOverview">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <!-- Today's Status -->
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4">📌 Today's Status</h3>
+          <div id="todayStatus" class="space-y-2">
+            <div class="text-center py-6 text-gray-500 text-sm animate-pulse">Loading today's data...</div>
+          </div>
+        </div>
+        <!-- Quick Summary -->
+        <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4">📈 Quick Summary</h3>
+          <div id="quickSummary" class="space-y-3">
+            <div class="text-center py-6 text-gray-500 text-sm animate-pulse">Loading...</div>
+          </div>
+        </div>
+      </div>
+      <!-- Bunk Calculator Summary in Overview -->
+      <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4">🧠 Quick Bunk Info (Target: 75%)</h3>
+        <div id="overviewBunk" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="text-center py-6 text-gray-500 text-sm animate-pulse">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subjects Tab -->
+    <div id="viewSubjects" class="hidden space-y-4">
+      <div class="text-center py-12 text-gray-400 animate-pulse">
+        Loading subjects...
+      </div>
+    </div>
+
+    <!-- Calendar Tab -->
+    <div id="viewCalendar" class="hidden">
+      <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5">
+        <div class="flex justify-between items-center mb-5">
+          <button onclick="changeMonth(-1)" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900/60 border border-slate-700 text-gray-400 hover:text-white transition">◀ Prev</button>
+          <h3 id="calendarTitle" class="text-lg font-bold gradient-text"></h3>
+          <button onclick="changeMonth(1)" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900/60 border border-slate-700 text-gray-400 hover:text-white transition">Next ▶</button>
+        </div>
+        <!-- Day headers -->
+        <div class="grid grid-cols-7 gap-1 mb-2 text-center">
+          <span class="text-[10px] font-bold text-red-400/60 uppercase">Sun</span>
+          <span class="text-[10px] font-bold text-gray-500 uppercase">Mon</span>
+          <span class="text-[10px] font-bold text-gray-500 uppercase">Tue</span>
+          <span class="text-[10px] font-bold text-gray-500 uppercase">Wed</span>
+          <span class="text-[10px] font-bold text-gray-500 uppercase">Thu</span>
+          <span class="text-[10px] font-bold text-gray-500 uppercase">Fri</span>
+          <span class="text-[10px] font-bold text-blue-400/60 uppercase">Sat</span>
+        </div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
+        <!-- Legend -->
+        <div class="flex gap-4 justify-center mt-5 text-xs text-gray-400 font-bold">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-green-500/40 border border-green-500/30"></span> All Present</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-yellow-500/40 border border-yellow-500/30"></span> Mixed</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-red-500/40 border border-red-500/30"></span> All Absent</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan QR Tab -->
+    <div id="viewScanQr" class="hidden">
+      <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-8 text-center">
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg mb-5">
+          <span class="text-4xl">📷</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">Face-Verified QR Attendance</h3>
+        <p class="text-gray-400 text-sm mb-2">This system uses <span class="text-pink-400 font-bold">Randomized Liveness Challenge</span> to verify your identity.</p>
+        <p class="text-gray-500 text-xs mb-6">You will be asked to perform a random action (e.g. turn head left, show 2 fingers) after scanning the QR to confirm you are physically present.</p>
+        <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 mb-6 text-left space-y-2">
+          <div class="flex items-center gap-3 text-sm">
+            <span class="text-green-400">✅</span>
+            <span class="text-gray-300">QR Code Expiry: <strong class="text-white">2 minutes</strong></span>
+          </div>
+          <div class="flex items-center gap-3 text-sm">
+            <span class="text-green-400">✅</span>
+            <span class="text-gray-300">Session Lock: <strong class="text-white">One-time use per student</strong></span>
+          </div>
+          <div class="flex items-center gap-3 text-sm">
+            <span class="text-green-400">✅</span>
+            <span class="text-gray-300">Liveness Check: <strong class="text-white">Random action challenge</strong></span>
+          </div>
+        </div>
+        <a href="/scan.html" class="inline-block bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-bold py-4 px-10 rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider transform hover:-translate-y-0.5">
+          🚀 Launch Secure Scanner
+        </a>
+      </div>
+    </div>
+
+    <!-- Leaves Tab -->
+    <div id="viewLeaves" class="hidden">
+      <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5 mb-6">
+        <h3 class="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4">🆕 Apply for Leave</h3>
+        <div class="flex flex-col md:flex-row gap-3 items-end">
+          <div class="w-full md:w-1/4">
+            <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Subject</label>
+            <select id="leaveSubject" class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 text-sm">
+              <option value="ALL">ALL SUBJECTS</option>
+            </select>
+          </div>
+          <div class="w-full md:w-1/4">
+            <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Date</label>
+            <input type="date" id="leaveDate" style="color-scheme: dark;" class="w-full bg-slate-900/60 text-white font-mono text-sm px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 cursor-pointer">
+          </div>
+          <div class="w-full md:flex-1">
+            <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Reason</label>
+            <input type="text" id="leaveReason" placeholder="e.g. Medical Emergency" class="w-full bg-slate-900/60 text-white text-sm px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500">
+          </div>
+          <div class="w-full md:w-1/4">
+            <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Proof Doc</label>
+            <input type="file" id="leaveDoc" accept="image/*,application/pdf" class="w-full bg-slate-900/60 text-white text-xs px-2 py-2.5 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 cursor-pointer">
+          </div>
+          <button onclick="applyLeave()" class="w-full md:w-auto bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider whitespace-nowrap">
+            Submit
+          </button>
+        </div>
+        <p id="leaveMsg" class="text-sm font-bold mt-2 h-5 text-center"></p>
+      </div>
+      <div class="glass-table overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-purple-900/30 border-b border-purple-500/30 text-xs uppercase tracking-widest text-purple-300 font-semibold">
+                <th class="p-4 px-6">Date</th>
+                <th class="p-4 px-6">Subject</th>
+                <th class="p-4 px-6">Reason</th>
+                <th class="p-4 px-6 text-center">Proof Doc</th>
+                <th class="p-4 px-6 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody id="leavesBody" class="font-sans text-sm">
+              <tr><td colspan="5" class="p-10 text-center text-gray-400 animate-pulse">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bunk Calculator Tab -->
+    <div id="viewBunk" class="hidden">
+      <div class="bg-slate-900/40 border border-purple-500/20 rounded-xl p-5 mb-6">
+        <h3 class="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4">🎯 Target Attendance %</h3>
+        <div class="flex items-center gap-4">
+          <input type="range" id="bunkTarget" min="50" max="95" value="75" oninput="renderBunkCalc()" class="flex-1 accent-pink-500 cursor-pointer">
+          <span id="bunkTargetLabel" class="text-2xl font-black text-pink-400 font-mono w-16 text-right">75%</span>
+        </div>
+      </div>
+      <div id="bunkCards" class="space-y-3">
+        <div class="text-center py-12 text-gray-400 animate-pulse">Loading bunk data...</div>
+      </div>
+    </div>
+
+    <!-- Update Face Tab -->
+    <div id="viewUpdateFace" class="hidden">
+      <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-6">
+        <h3 class="text-sm font-bold text-orange-300 uppercase tracking-wider mb-1">📸 Update Your Registered Face</h3>
+        <p class="text-xs text-gray-400 mb-5">Agar tumhara face register nahi hua ya match fail ho raha hai, yahan se update karo. Camera mein seedha dekho aur clearly light mein rakho.</p>
+
+        <!-- Camera -->
+        <div class="relative w-full max-w-sm mx-auto aspect-[4/3] bg-black rounded-2xl overflow-hidden border-2 border-orange-500/40 shadow-xl mb-4">
+          <video id="faceUpdateVideo" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline muted></video>
+          <div id="faceUpdateScanLine" class="hidden absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-400 to-transparent opacity-80" style="animation: scan 2.5s infinite linear;"></div>
+        </div>
+
+        <!-- Status msg -->
+        <p id="faceUpdateMsg" class="text-center text-sm font-bold text-gray-400 mb-4 min-h-[20px]">Camera ready — Click button below when face clearly visible</p>
+
+        <button onclick="captureAndUpdateFace()" id="faceUpdateBtn"
+          class="w-full max-w-sm mx-auto block bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all uppercase tracking-wider text-sm">
+          📸 Capture &amp; Update Face
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex flex-col sm:flex-row justify-between items-center mt-6 text-xs text-slate-500 px-2 font-semibold tracking-wider gap-3">
+      <p id="last-updated">Last Sync: Connecting...</p>
+      <div class="flex gap-4">
+        <button onclick="fetchAllData()" class="hover:text-pink-400 transition-colors uppercase flex items-center gap-1">
+          <span>🔄</span> Refresh
+        </button>
+        <span class="opacity-50">|</span>
+        <button onclick="logout()" class="hover:text-red-400 transition-colors uppercase flex items-center gap-1 text-slate-400">
+          <span>🚪</span> Logout
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- QR Scanner Library removed: uses scan.html with full verification -->
+
+  <script>
+    // Auth Guard
+    if (!localStorage.getItem("studentAuth") || !localStorage.getItem("studentToken")) {
+      window.location.replace("/index.html");
+    }
+
+    const currentStudentId = localStorage.getItem("studentId") || "";
+    document.getElementById("studentName").innerText = currentStudentId;
+
+    async function fetchWithAuth(url, options = {}) {
+      if (!options.headers) options.headers = {};
+      const token = localStorage.getItem('studentToken');
+      if (token) options.headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(url, options);
+      // If token expired, clean up and redirect — do not call logout() inside to avoid recursive issues
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("studentAuth");
+        localStorage.removeItem("studentId");
+        localStorage.removeItem("studentToken");
+        window.location.replace("/index.html");
+      }
+      return res;
+    }
+
+    function logout() {
+      localStorage.removeItem("studentAuth");
+      localStorage.removeItem("studentId");
+      localStorage.removeItem("studentToken");
+      window.location.replace("/index.html");
+    }
+
+    let activeTab = 'overview';
+    let cachedSubjectData = [];
+    let calendarData = [];
+    let calendarMonth = new Date().getMonth();
+    let calendarYear = new Date().getFullYear();
+
+    // ==================== TAB SWITCHING ====================
+    const allTabs  = ['tabOverview','tabSubjects','tabCalendar','tabScanQr','tabLeaves','tabBunk','tabUpdateFace'];
+    const allViews = ['viewOverview','viewSubjects','viewCalendar','viewScanQr','viewLeaves','viewBunk','viewUpdateFace'];
+
+    function switchTab(tab) {
+      if (activeTab === tab) return;
+      activeTab = tab;
+
+      allTabs.forEach(t  => document.getElementById(t).classList.remove('active'));
+      allViews.forEach(v => document.getElementById(v).classList.add('hidden'));
+
+      document.getElementById('tab'  + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+      document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+
+      if (tab === 'calendar')    fetchCalendar();
+      if (tab === 'leaves')      fetchLeaves();
+      if (tab === 'bunk')        renderBunkCalc();
+      if (tab === 'updateFace')  initFaceUpdateCamera();
+    }
+
+    // ==================== DATA FETCHING ====================
+    async function fetchProfile() {
+      try {
+        const res = await fetchWithAuth("/student/profile/" + currentStudentId);
+        if (res.ok) {
+          const profile = await res.json();
+          if (profile.name && profile.name.trim() !== "") {
+            document.getElementById("topStudentName").innerText = profile.name;
+          }
+          if (profile.image && profile.image.trim() !== "") {
+            document.getElementById("studentPhoto").src = profile.image;
+            document.getElementById("studentPhoto").classList.remove("hidden");
+            document.getElementById("studentPhotoPlaceholder").classList.add("hidden");
+          }
+        }
+      } catch (err) {
+        console.error("Profile fetch error:", err);
+      }
+    }
+
+    async function fetchAllData() {
+      try {
+        fetchProfile();
+        const res = await fetchWithAuth("/student/subject-attendance/" + currentStudentId);
+        const data = await res.json();
+        cachedSubjectData = data;
+        renderOverview(data);
+        renderSubjects(data);
+        updateHeaderStats(data);
+        document.getElementById("last-updated").innerText = `Last Sync: ${new Date().toLocaleTimeString()}`;
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    }
+
+    function updateHeaderStats(data) {
+      let totalPresent = 0, totalAbsent = 0;
+      data.forEach(s => { totalPresent += s.present; totalAbsent += s.absent; });
+      
+      document.getElementById('totalSubjects').innerText = data.length;
+      document.getElementById('totalPresent').innerText = totalPresent;
+      document.getElementById('totalAbsent').innerText = totalAbsent;
+
+      const total = totalPresent + totalAbsent;
+      const perc = total > 0 ? Math.round((totalPresent / total) * 100) : 0;
+      const percEl = document.getElementById('overallPercentage');
+      percEl.innerText = perc + '%';
+      percEl.className = "text-xl font-mono font-bold animate-count " + (perc >= 75 ? 'text-green-400' : perc >= 60 ? 'text-yellow-400' : 'text-red-400');
+
+      // Low Attendance Alert
+      const alertContainer = document.getElementById('alertContainer');
+      if (total > 5 && perc < 75) {
+        alertContainer.innerHTML = `
+          <div class="bg-red-500/20 border border-red-500/50 rounded-xl p-4 flex items-start gap-3 text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.2)]">
+            <span class="text-2xl mt-0.5">⚠️</span>
+            <div>
+              <strong class="font-bold text-red-300 uppercase tracking-wider">Low Attendance Alert!</strong><br>
+              <span class="text-sm">Your overall attendance is <strong>${perc}%</strong>, below the 75% required threshold. Attend classes regularly to avoid detention.</span>
+            </div>
+          </div>`;
+      } else {
+        alertContainer.innerHTML = '';
+      }
+
+      // Populate leave subject dropdown
+      const lSelect = document.getElementById('leaveSubject');
+      let lOpts = '<option value="ALL">ALL SUBJECTS</option>';
+      data.forEach(sub => {
+        lOpts += `<option value="${sub.subjectCode}">${sub.subjectName} (${sub.subjectCode})</option>`;
+      });
+      lSelect.innerHTML = lOpts;
+    }
+
+    // ==================== OVERVIEW TAB ====================
+    function renderOverview(data) {
+      // Today's status
+      const today = new Date().toISOString().split('T')[0];
+      const todayContainer = document.getElementById('todayStatus');
+      
+      let todayHtml = '';
+      let hasTodayData = false;
+      data.forEach(sub => {
+        const todayRecord = sub.records.find(r => r.date === today);
+        if (todayRecord) {
+          hasTodayData = true;
+          const isPresent = todayRecord.status === 'present';
+          todayHtml += `
+            <div class="flex justify-between items-center bg-slate-900/60 rounded-lg px-4 py-2.5 border border-white/5">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">${sub.subjectCode}</span>
+                <span class="text-sm font-bold text-white">${sub.subjectName}</span>
+              </div>
+              <span class="px-3 py-1 rounded-full text-xs font-bold ${isPresent ? 'bg-green-500/15 text-green-400 border border-green-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}">
+                ${isPresent ? '✅ Present' : '❌ Absent'}
+              </span>
+            </div>`;
+        }
+      });
+
+      if (!hasTodayData) {
+        todayHtml = '<div class="text-center py-6 text-gray-500 text-sm">No attendance recorded for today yet.</div>';
+      }
+      todayContainer.innerHTML = todayHtml;
+
+      // Quick Summary
+      const summaryEl = document.getElementById('quickSummary');
+      let bestSubject = { name: '-', perc: 0 };
+      let worstSubject = { name: '-', perc: 100 };
+      data.forEach(sub => {
+        if (sub.totalClasses > 0) {
+          if (sub.percentage > bestSubject.perc) bestSubject = { name: sub.subjectName, perc: sub.percentage };
+          if (sub.percentage < worstSubject.perc) worstSubject = { name: sub.subjectName, perc: sub.percentage };
+        }
+      });
+
+      summaryEl.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400 text-sm">Best Subject</span>
+          <span class="text-green-400 font-bold text-sm">${bestSubject.name} (${bestSubject.perc}%)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400 text-sm">Needs Attention</span>
+          <span class="text-red-400 font-bold text-sm">${worstSubject.name} (${worstSubject.perc}%)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400 text-sm">Total Subjects</span>
+          <span class="text-purple-300 font-bold text-sm">${data.length}</span>
+        </div>
+      `;
+
+      // Overview bunk info
+      const bunkEl = document.getElementById('overviewBunk');
+      let bunkHtml = '';
+      data.forEach(sub => {
+        if (sub.totalClasses === 0) return;
+        let msg, color;
+        if (sub.percentage >= 75) {
+          const canBunk = Math.floor((sub.present * 100 - 75 * sub.totalClasses) / 75);
+          msg = canBunk > 0 ? `Can bunk ${canBunk}` : 'Edge! 0 bunks';
+          color = canBunk > 0 ? 'text-green-400' : 'text-yellow-400';
+        } else {
+          const need = Math.ceil((75 * sub.totalClasses - 100 * sub.present) / 25);
+          msg = `Attend ${need} more`;
+          color = 'text-red-400';
+        }
+        bunkHtml += `
+          <div class="flex justify-between items-center bg-slate-900/60 rounded-lg px-3 py-2 border border-white/5">
+            <span class="text-xs text-gray-300 font-bold">${sub.subjectName}</span>
+            <span class="text-xs font-bold ${color}">${msg}</span>
+          </div>`;
+      });
+      bunkEl.innerHTML = bunkHtml || '<div class="text-center py-4 text-gray-500 text-sm col-span-2">No data yet</div>';
+    }
+
+    // ==================== SUBJECTS TAB ====================
+    function renderSubjects(data) {
+      const container = document.getElementById('viewSubjects');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-gray-500">No subject data found.</div>';
+        return;
+      }
+
+      let html = '';
+      data.forEach((sub, index) => {
+        const pColor = sub.percentage >= 75 ? 'from-green-500 to-emerald-500' : sub.percentage >= 60 ? 'from-yellow-500 to-orange-500' : 'from-red-500 to-rose-500';
+        const pTextColor = sub.percentage >= 75 ? 'text-green-400' : sub.percentage >= 60 ? 'text-yellow-400' : 'text-red-400';
+
+        // Warning message
+        let warningHtml = '';
+        if (sub.totalClasses > 0 && sub.percentage < 75) {
+          const need = Math.ceil((75 * sub.totalClasses - 100 * sub.present) / 25);
+          warningHtml = `
+            <div class="px-5 py-2 bg-red-500/10 border-t border-red-500/20">
+              <p class="text-xs text-red-400 font-bold">⚠️ Below 75%! Attend next ${need} class${need > 1 ? 'es' : ''} without fail.</p>
+            </div>`;
+        }
+
+        // Records
+        let recordsHtml = '';
+        if (sub.records && sub.records.length > 0) {
+          sub.records.slice(0, 8).forEach(rec => {
+            const isPresent = rec.status === 'present';
+            recordsHtml += `
+              <div class="flex justify-between items-center px-5 py-2 border-b border-white/5 last:border-0">
+                <span class="text-gray-400 font-mono text-xs">${rec.date}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPresent ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}">
+                  ${isPresent ? '✅ Present' : '❌ Absent'}
+                </span>
+                <span class="text-gray-500 font-mono text-xs">${rec.time || '-'}</span>
+              </div>`;
+          });
+        } else {
+          recordsHtml = '<div class="py-4 text-center text-gray-500 text-sm">No records yet</div>';
+        }
+
+        html += `
+          <div class="subject-card animate-fade-in-up" style="animation-delay: ${index * 80}ms;">
+            <div class="p-5 cursor-pointer" onclick="toggleRecords('${sub.subjectCode}')">
+              <div class="flex justify-between items-start mb-3">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20">${sub.subjectCode}</span>
+                    <h3 class="text-base font-bold text-white">${sub.subjectName}</h3>
+                  </div>
+                  <div class="flex gap-4 mt-2 text-xs">
+                    <span class="text-gray-400">Classes: <span class="text-white font-bold">${sub.totalClasses}</span></span>
+                    <span class="text-green-400/80">Present: <span class="font-bold text-green-400">${sub.present}</span></span>
+                    <span class="text-red-400/80">Absent: <span class="font-bold text-red-400">${sub.absent}</span></span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl font-black ${pTextColor} font-mono">${sub.percentage}%</span>
+                  <svg id="arrow-${sub.subjectCode}" class="w-5 h-5 text-gray-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="progress-bar-bg h-2">
+                <div class="progress-bar-fill h-full bg-gradient-to-r ${pColor}" style="width: ${sub.percentage}%;"></div>
+              </div>
+            </div>
+            ${warningHtml}
+            <div id="records-${sub.subjectCode}" class="hidden border-t border-white/5">
+              ${recordsHtml}
+            </div>
+          </div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function toggleRecords(code) {
+      const el = document.getElementById('records-' + code);
+      const arrow = document.getElementById('arrow-' + code);
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+      } else {
+        el.classList.add('hidden');
+        if (arrow) arrow.style.transform = '';
+      }
+    }
+
+    // ==================== CALENDAR TAB ====================
+    async function fetchCalendar() {
+      try {
+        const res = await fetchWithAuth("/student/calendar/" + currentStudentId);
+        calendarData = await res.json();
+        renderCalendar();
+      } catch (err) {
+        console.error("Calendar error:", err);
+      }
+    }
+
+    function changeMonth(delta) {
+      calendarMonth += delta;
+      if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+      if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      document.getElementById('calendarTitle').innerText = `${monthNames[calendarMonth]} ${calendarYear}`;
+
+      const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+      const todayDate = new Date();
+      const todayStr = todayDate.toISOString().split('T')[0];
+
+      const grid = document.getElementById('calendarGrid');
+      let html = '';
+
+      // Empty cells for days before the 1st
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="cal-dot cal-empty"></div>';
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayData = calendarData.find(d => d.date === dateStr);
+        
+        let colorClass = 'cal-empty';
+        let tooltip = '';
+        if (dayData) {
+          colorClass = 'cal-' + dayData.color;
+          tooltip = `P:${dayData.present} A:${dayData.absent}`;
+        }
+
+        const isToday = dateStr === todayStr ? ' cal-today' : '';
+        html += `<div class="cal-dot ${colorClass}${isToday}" title="${tooltip}">${day}</div>`;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    // ==================== QR SCANNER TAB ====================
+    // Redirects to scan.html which has full randomized liveness verification
+
+    // ==================== LEAVES TAB ====================
+    async function applyLeave() {
+      const subjectCode = document.getElementById("leaveSubject").value;
+      const date = document.getElementById("leaveDate").value;
+      const reason = document.getElementById("leaveReason").value.trim();
+      const docFile = document.getElementById("leaveDoc").files[0];
+      const msgEl = document.getElementById("leaveMsg");
+
+      if (!date || !reason || !docFile) {
+        msgEl.innerText = "⚠️ Please provide date, reason, and a proof document";
+        msgEl.className = "text-sm font-bold mt-2 h-5 text-center text-yellow-400";
+        return;
+      }
+      
+      msgEl.innerText = "⏳ Uploading proof & submitting...";
+      msgEl.className = "text-sm font-bold mt-2 h-5 text-center text-blue-400";
+
+      const reader = new FileReader();
+      reader.readAsDataURL(docFile);
+      reader.onload = async () => {
+        const documentImage = reader.result; // base64 string
+        try {
+          const res = await fetchWithAuth("/student/leave", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: currentStudentId, subjectCode, date, reason, documentImage })
+          });
+          const data = await res.json();
+        if (res.ok) {
+          msgEl.innerText = "✅ " + data.message;
+          msgEl.className = "text-sm font-bold mt-2 h-5 text-center text-green-400";
+          document.getElementById("leaveReason").value = "";
+          fetchLeaves();
+        } else {
+          msgEl.innerText = "❌ " + (data.error || "Failed");
+          msgEl.className = "text-sm font-bold mt-2 h-5 text-center text-red-400";
+        }
+        } catch (err) {
+          msgEl.innerText = "❌ Network Error";
+          msgEl.className = "text-sm font-bold mt-2 h-5 text-center text-red-400";
+        }
+      };
+      reader.onerror = () => {
+        msgEl.innerText = "❌ Error reading file";
+        msgEl.className = "text-sm font-bold mt-2 h-5 text-center text-red-400";
+      };
+    }
+
+    async function fetchLeaves() {
+      try {
+        const res = await fetchWithAuth("/student/leaves/" + currentStudentId);
+        const data = await res.json();
+        const tbody = document.getElementById("leavesBody");
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500">No leave requests.</td></tr>`;
+          return;
+        }
+        let rows = '';
+        data.forEach(item => {
+          let badge = '';
+          if (item.status === 'Pending') badge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">⏳ Pending</span>';
+          else if (item.status === 'Approved') badge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-green-500/15 text-green-400 border border-green-500/30">✅ Approved</span>';
+          else badge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30">❌ Rejected</span>';
+          rows += `
+          <tr class="border-b border-white/5 hover:bg-purple-500/10 transition-colors text-gray-200">
+            <td class="p-4 px-6 font-mono text-pink-300 font-bold">${item.date}</td>
+            <td class="p-4 px-6 text-purple-300 font-bold">${item.subjectCode}</td>
+            <td class="p-4 px-6 text-gray-400 text-sm">${item.reason}</td>
+            <td class="p-4 px-6 text-center">
+              ${item.documentImage ? `<a href="${item.documentImage}" download="leave_proof_${item.date}" class="text-xs text-blue-400 underline" target="_blank">View Doc</a>` : '-'}
+            </td>
+            <td class="p-4 px-6 text-right">${badge}</td>
+          </tr>`;
+        });
+        tbody.innerHTML = rows;
+      } catch (err) {
+        document.getElementById("leavesBody").innerHTML = `<tr><td colspan="4" class="text-center p-8 text-red-500">Error</td></tr>`;
+      }
+    }
+
+    // ==================== BUNK CALCULATOR ====================
+    function renderBunkCalc() {
+      const target = parseInt(document.getElementById('bunkTarget').value);
+      document.getElementById('bunkTargetLabel').innerText = target + '%';
+      const container = document.getElementById('bunkCards');
+
+      if (cachedSubjectData.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-gray-500">No data. Refresh first.</div>';
+        return;
+      }
+
+      let html = '';
+      cachedSubjectData.forEach((sub, i) => {
+        const total = sub.totalClasses;
+        const present = sub.present;
+        const perc = sub.percentage;
+        let message, msgColor, icon;
+
+        if (total === 0) {
+          message = 'No classes yet'; msgColor = 'text-gray-400'; icon = '💭';
+        } else if (perc >= target) {
+          const canBunk = Math.floor((present * 100 - target * total) / target);
+          if (canBunk > 0) {
+            message = `Can safely bunk <strong>${canBunk}</strong> class${canBunk > 1 ? 'es' : ''}`;
+            msgColor = 'text-green-400'; icon = '✅';
+          } else {
+            message = 'Right at the edge. <strong>Cannot bunk!</strong>';
+            msgColor = 'text-yellow-400'; icon = '⚠️';
+          }
+        } else {
+          const needAttend = Math.ceil((target * total - 100 * present) / (100 - target));
+          message = `Attend next <strong>${needAttend}</strong> class${needAttend > 1 ? 'es' : ''} to reach ${target}%`;
+          msgColor = 'text-red-400'; icon = '🚨';
+        }
+
+        html += `
+        <div class="bg-slate-900/40 border border-white/5 rounded-xl p-5 animate-fade-in-up" style="animation-delay: ${i * 60}ms;">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-3 mb-1">
+                <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20">${sub.subjectCode}</span>
+                <h3 class="text-base font-bold text-white">${sub.subjectName}</h3>
+              </div>
+              <div class="flex gap-4 mt-2 text-xs">
+                <span class="text-gray-400">Classes: <span class="text-white font-bold">${total}</span></span>
+                <span class="text-green-400/80">Present: <span class="font-bold text-green-400">${present}</span></span>
+                <span class="text-gray-400">Current: <span class="font-bold ${perc >= target ? 'text-green-400' : 'text-red-400'}">${perc}%</span></span>
+              </div>
+            </div>
+            <span class="text-3xl">${icon}</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-white/5">
+            <p class="text-sm font-bold ${msgColor}">${message}</p>
+          </div>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    // ==================== UPDATE FACE ====================
+    let faceUpdateStream = null;
+    let faceUpdateModelsLoaded = false;
+    
+    async function initFaceUpdateCamera() {
+      const video = document.getElementById("faceUpdateVideo");
+      if (faceUpdateStream) return; // already running
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        video.srcObject = stream;
+        faceUpdateStream = stream;
+        
+        if (!faceUpdateModelsLoaded) {
+          document.getElementById("faceUpdateMsg").innerText = "Loading face detection models...";
+          const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+          ]);
+          faceUpdateModelsLoaded = true;
+        }
+        document.getElementById("faceUpdateMsg").innerText = "Camera ready — Position face clearly and click Capture";
+      } catch (err) {
+        document.getElementById("faceUpdateMsg").innerText = "Error accessing camera. Please allow permissions.";
+        document.getElementById("faceUpdateMsg").classList.add("text-red-400");
+      }
+    }
+
+    async function captureAndUpdateFace() {
+      if (!faceUpdateModelsLoaded || !faceUpdateStream) return;
+      
+      const btn = document.getElementById("faceUpdateBtn");
+      const msg = document.getElementById("faceUpdateMsg");
+      const scanLine = document.getElementById("faceUpdateScanLine");
+      
+      btn.disabled = true;
+      btn.classList.add("opacity-50");
+      scanLine.classList.remove("hidden");
+      msg.innerText = "Extracting facial features... Please hold still.";
+      msg.className = "text-center text-sm font-bold text-orange-400 mb-4 min-h-[20px] animate-pulse";
+
+      const video = document.getElementById("faceUpdateVideo");
+      
+      try {
+        const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                                        .withFaceLandmarks().withFaceDescriptor();
+                                        
+        if (!detections) {
+          throw new Error("No face detected! Camera ke saamne aao.");
+        }
+        
+        // Capture image
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL("image/jpeg", 0.7);
+        
+        const descriptor = Array.from(detections.descriptor);
+        
+        msg.innerText = "Uploading to server...";
+        
+        const res = await fetchWithAuth("/student/update-face", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId: currentStudentId, image: imageData, descriptor })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          msg.innerText = data.message;
+          msg.className = "text-center text-sm font-bold text-green-400 mb-4 min-h-[20px]";
+          // Remove banner if it was there
+          const banner = document.getElementById("noFaceBanner");
+          if(banner) banner.remove();
+        } else {
+          throw new Error(data.error || "Update failed.");
+        }
+      } catch (err) {
+        msg.innerText = err.message;
+        msg.className = "text-center text-sm font-bold text-red-400 mb-4 min-h-[20px] p-2 bg-red-900/30 rounded";
+      } finally {
+        scanLine.classList.add("hidden");
+        btn.disabled = false;
+        btn.classList.remove("opacity-50");
+      }
+    }
+
+    // ==================== CHECK FACE STATUS ====================
+    async function checkFaceStatus() {
+      try {
+        const res = await fetchWithAuth(`/student/face-status/${currentStudentId}`);
+        if(res.ok) {
+          const data = await res.json();
+          if(!data.hasFace) {
+            const banner = document.createElement("div");
+            banner.id = "noFaceBanner";
+            banner.className = "w-full bg-red-900/40 border border-red-500/50 text-red-200 p-3 mb-4 rounded-xl flex items-center justify-between text-sm font-bold animate-pulse";
+            banner.innerHTML = `
+              <span>⚠️ Aapka face registered nahi hai! Proxy-protection ki wajah se attendance block ho jayegi.</span>
+              <button onclick="switchTab('updateFace')" class="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded-lg">Fix Now</button>
+            `;
+            document.getElementById("alertContainer").appendChild(banner);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not check face status", e);
+      }
+    }
+
+    // ==================== INIT ====================
+    fetchAllData();
+    checkFaceStatus();
+    // ==================== PHOTO MODAL ====================
+    function openPhotoModal() {
+      const modal = document.getElementById("photoModal");
+      const modalImg = document.getElementById("photoModalImage");
+      const src = document.getElementById("studentPhoto").src;
+      
+      if (src && !document.getElementById("studentPhoto").classList.contains("hidden")) {
+        modalImg.src = src;
+        modalImg.classList.remove("hidden");
+        document.getElementById("photoModalPlaceholder").classList.add("hidden");
+      } else {
+        modalImg.src = "";
+        modalImg.classList.add("hidden");
+        document.getElementById("photoModalPlaceholder").classList.remove("hidden");
+      }
+      
+      modal.classList.remove("hidden");
+      setTimeout(() => { modal.classList.remove("opacity-0", "scale-95"); }, 10);
+    }
+
+    function closePhotoModal() {
+      const modal = document.getElementById("photoModal");
+      modal.classList.add("opacity-0", "scale-95");
+      setTimeout(() => { modal.classList.add("hidden"); }, 300);
+    }
+    
+    function goToUpdateFace() {
+      closePhotoModal();
+      switchTab('updateFace');
+    }
+  </script>
+
+  <!-- Photo Modal -->
+  <div id="photoModal" class="fixed inset-0 z-[100] flex items-center justify-center hidden opacity-0 scale-95 transition-all duration-300 backdrop-blur-md bg-black/60 p-4">
+    <div class="glass-card max-w-sm w-full p-6 relative flex flex-col items-center">
+      <button onclick="closePhotoModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white text-xl font-bold px-2 py-1">&times;</button>
+      <h3 class="text-xl font-bold text-white mb-6">Your Profile Photo</h3>
+      
+      <div class="w-48 h-48 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(236,72,153,0.3)] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center border-4 border-slate-700 mb-6">
+        <img id="photoModalImage" src="" alt="Profile" class="w-full h-full object-cover hidden">
+        <span id="photoModalPlaceholder" class="text-6xl filter drop-shadow-md">🎓</span>
+      </div>
+      
+      <button onclick="goToUpdateFace()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-pink-600 hover:to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-pink-500/25 transition-all flex justify-center items-center gap-2">
+        <span class="text-xl">📸</span> Update Photo
+      </button>
+    </div>
+  </div>
+</body>
+</html>

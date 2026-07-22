@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Registration & Records</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Face API for descriptor extraction during registration -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1.5rem;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tab-btn { transition: all 0.3s ease; }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+      border-color: rgba(236, 72, 153, 0.5) !important;
+      color: white !important;
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.2);
+    }
+    .glass-table {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid rgba(168, 85, 247, 0.15);
+    }
+    @keyframes scan {
+      0% { top: 0%; box-shadow: 0 0 10px 2px rgba(236, 72, 153, 0.8); }
+      50% { top: 100%; box-shadow: 0 0 10px 2px rgba(236, 72, 153, 0.8); }
+      100% { top: 0%; box-shadow: 0 0 10px 2px rgba(236, 72, 153, 0.8); }
+    }
+    .input-error {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    }
+  </style>
+</head>
+<body class="text-white min-h-screen py-10 px-4 flex flex-col items-center relative overflow-x-hidden overflow-y-auto" style="background: radial-gradient(circle at top right, #1e1b4b, #0f172a, #020617);">
+  
+  <div class="fixed top-4 right-4 z-[9999] flex flex-wrap gap-2 justify-end">
+    <a href="/index.html" class="bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-full backdrop-blur-md shadow-lg border border-indigo-400/30 transition-all">🏠 Home</a>
+  </div>
+  
+  <div class="absolute -top-32 -right-32 w-96 h-96 bg-purple-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse"></div>
+  <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-pink-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse" style="animation-delay: 2s;"></div>
+
+  <div class="glass-card w-full max-w-4xl p-8 shadow-2xl relative z-10">
+
+    <div class="text-center mb-6">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg mb-4 transform -rotate-3">
+        <span class="text-3xl filter drop-shadow-md">📸</span>
+      </div>
+      <h1 class="text-3xl font-extrabold mb-1 gradient-text tracking-tight">Registration Center</h1>
+      <p class="text-gray-400 text-sm font-medium">Link securely, check instantly, and view database</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6 flex-wrap border-b border-white/10 pb-4 justify-center">
+      <button id="tabRegister" class="tab-btn active px-6 py-2.5 rounded-xl text-sm font-bold tracking-wide border border-slate-700 bg-slate-900/40 text-gray-400">
+        ➕ New Registration
+      </button>
+    </div>
+
+    <!-- Registration View -->
+    <div id="viewRegister">
+      <!-- 1. Form Section -->
+      <div id="registration-form" class="space-y-6">
+        
+        <div class="flex flex-col md:flex-row gap-6">
+          <div class="w-full md:w-1/2 space-y-4">
+            
+            <div>
+              <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Student Name</label>
+              <input type="text" id="name" placeholder="Full Name" 
+                     class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 text-sm placeholder-gray-600">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Student ID Roll No.</label>
+              <input type="text" id="studentId" placeholder="e.g. S123456" oninput="liveCheck('studentId')"
+                     class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 font-mono tracking-widest text-sm uppercase placeholder-gray-600 font-bold">
+              <p id="studentIdError" class="text-xs font-bold text-red-500 mt-1 min-h-[16px]"></p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Parent Phone</label>
+              <input type="text" id="parentPhone" placeholder="10-digit number" oninput="liveCheck('phone')"
+                     class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 font-mono tracking-widest text-sm placeholder-gray-600">
+              <p id="phoneError" class="text-xs font-bold text-red-500 mt-1 min-h-[16px]"></p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Parent Email</label>
+              <input type="email" id="parentEmail" placeholder="parent@example.com" oninput="liveCheck('email')"
+                     class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 font-mono text-sm placeholder-gray-600">
+              <p id="emailError" class="text-xs font-bold text-red-500 mt-1 min-h-[16px]"></p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Create Password</label>
+              <input type="password" id="password" placeholder="••••••••" 
+                     class="w-full bg-slate-900/60 text-white px-4 py-3 rounded-xl border border-purple-500/30 focus:outline-none focus:border-pink-500 font-mono text-sm placeholder-gray-600">
+            </div>
+
+          </div>
+
+          <div class="w-full md:w-1/2 flex flex-col justify-center">
+            <div class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border-2 border-purple-500/40 shadow-xl group">
+              <video id="video" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline muted></video>
+              <div id="scan-line" class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-pink-400 to-transparent opacity-80 hidden" style="animation: scan 2.5s infinite linear;"></div>
+            </div>
+            <p class="text-center text-xs text-gray-400 mt-3 font-bold">Align face clearly in camera</p>
+          </div>
+        </div>
+
+        <button onclick="register()" id="register-btn"
+                class="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 uppercase tracking-wider text-sm mt-4">
+          Capture & Register
+        </button>
+        <p id="msg" class="text-center text-sm font-bold min-h-[20px]"></p>
+      </div>
+
+      <!-- 2. Success Screen (Hidden initially) -->
+      <div id="success-screen" class="hidden text-center py-8">
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-green-500/20 text-green-400 rounded-full mb-6 border-2 border-green-500/40 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+          <span class="text-4xl text-green-400">✔️</span>
+        </div>
+        <h2 class="text-3xl font-extrabold text-white mb-2">Registration Complete!</h2>
+        <p class="text-gray-400 mb-8">Details have been securely linked to biometrics.</p>
+        
+        <div class="glass-card inline-block text-left p-6 mb-8 border border-green-500/30 w-full max-w-sm">
+          <div class="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
+            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Student ID</span>
+            <span class="font-mono font-bold text-pink-300" id="successId"></span>
+          </div>
+          <div class="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
+            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Name</span>
+            <span class="font-bold text-white" id="successName"></span>
+          </div>
+          <div class="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
+            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Phone</span>
+            <span class="font-mono font-bold text-white" id="successPhone"></span>
+          </div>
+          <div class="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
+            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Email</span>
+            <span class="font-mono font-bold text-white" id="successEmail"></span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">System Tag</span>
+            <span class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold border border-green-500/40">Verified</span>
+          </div>
+        </div>
+
+        <button onclick="resetRegistration()" class="block mx-auto bg-slate-800 hover:bg-slate-700 border border-purple-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all tracking-wider text-sm uppercase">
+          New Student Registration
+        </button>
+      </div>
+
+    </div>
+
+
+
+  </div>
+
+  <script>
+    // Camera & Face-API Globals
+    const video = document.getElementById("video");
+    const scanLine = document.getElementById("scan-line");
+    let cameraActive = false;
+    let allStudents = [];
+    let faceModelsLoaded = false;
+    const MODELS_URI = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+
+    // Start camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+    .then(stream => { video.srcObject = stream; cameraActive = true; })
+    .catch(err => { console.error(err); alert("Camera required for registration!"); });
+
+    // Load face-api models — poll until faceapi is ready (it's loaded via defer)
+    async function loadFaceModels() {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URI),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URI),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URI)
+        ]);
+        faceModelsLoaded = true;
+        console.log("✅ Face models loaded for registration");
+      } catch(e) {
+        console.warn("⚠️ Face models failed to load:", e);
+      }
+    }
+
+    // Wait for faceapi to be available (defer script may not be ready immediately)
+    function waitForFaceApi() {
+      if (typeof faceapi !== 'undefined') {
+        loadFaceModels();
+      } else {
+        setTimeout(waitForFaceApi, 200);
+      }
+    }
+    waitForFaceApi(); // Start polling immediately
+
+    // Tab Logic
+    let activeTab = 'register';
+    function switchTab(tab) {
+      activeTab = tab;
+      ['tabRegister', 'tabRecords'].forEach(t => document.getElementById(t).classList.remove('active'));
+      document.getElementById(tab === 'register' ? 'tabRegister' : 'tabRecords').classList.add('active');
+
+      ['viewRegister', 'viewRecords'].forEach(v => document.getElementById(v).classList.add('hidden'));
+      document.getElementById(tab === 'register' ? 'viewRegister' : 'viewRecords').classList.remove('hidden');
+
+      if (tab === 'records') fetchRecords();
+    }
+
+    // Live Validation Logic
+    let checkTimeout = null;
+    async function liveCheck(field) {
+      if (checkTimeout) clearTimeout(checkTimeout);
+      
+      const el = document.getElementById(field);
+      const val = el.value.trim();
+      const errEl = document.getElementById(field + "Error");
+      
+      el.classList.remove("input-error");
+      errEl.innerText = "";
+      
+      if (!val) return;
+
+      checkTimeout = setTimeout(async () => {
+        try {
+          const queryParam = field === 'studentId' ? `studentId=${val}` : `phone=${val}`;
+          const res = await fetch(`/api/check-student?${queryParam}`);
+          const data = await res.json();
+          
+          if (data.conflict) {
+            el.classList.add("input-error");
+            errEl.innerText = "❌ " + data.message;
+          }
+        } catch (e) {
+          console.error("Validation error", e);
+        }
+      }, 500); // 500ms debounce
+    }
+
+    // Registration Logic
+    function register() {
+      const studentId = document.getElementById("studentId").value.trim().toUpperCase();
+      const name = document.getElementById("name").value.trim();
+      const parentPhone = document.getElementById("parentPhone").value.trim();
+      const parentEmail = document.getElementById("parentEmail").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const msgEl = document.getElementById("msg");
+
+      if (!studentId || !name || !parentPhone || !parentEmail || !password) {
+        msgEl.innerText = "⚠️ All fields are mandatory";
+        msgEl.className = "text-center text-sm font-semibold text-yellow-400 mt-2";
+        return;
+      }
+      if (document.getElementById("studentId").classList.contains("input-error") || 
+          document.getElementById("parentPhone").classList.contains("input-error") ||
+          document.getElementById("parentEmail").classList.contains("input-error")) {
+        msgEl.innerText = "⚠️ Please fix the highlighted errors first.";
+        msgEl.className = "text-center text-sm font-semibold text-red-500 mt-2";
+        return;
+      }
+
+      scanLine.classList.remove("hidden");
+      msgEl.innerText = "Scanning Biometrics... Please stay still";
+      msgEl.className = "text-center text-sm font-bold text-pink-400 animate-pulse mt-2";
+      document.getElementById("register-btn").disabled = true;
+      document.getElementById("register-btn").classList.add("opacity-50");
+
+      // Wait a moment for camera frame to stabilize, then capture + extract descriptor
+      setTimeout(async () => {
+        // 1. Capture photo
+        let canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        let ctx = canvas.getContext("2d");
+        ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        let image = canvas.toDataURL("image/jpeg", 0.6);
+
+        // 2. Extract 128-D face descriptor from live video
+        let descriptor = [];
+        if (faceModelsLoaded) {
+          try {
+            msgEl.innerText = "Extracting face signature... Hold still 🔍";
+            const det = await faceapi
+              .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+              .withFaceLandmarks()
+              .withFaceDescriptor();
+
+            if (det) {
+              descriptor = Array.from(det.descriptor);
+              msgEl.innerText = "Face signature captured ✅ Registering...";
+              console.log(`✅ Descriptor extracted: ${descriptor.length} dimensions`);
+            } else {
+              msgEl.innerText = "⚠️ No face detected clearly. Registering without face vector...";
+              console.warn("No face detected during registration");
+            }
+          } catch(e) {
+            console.warn("Descriptor extraction error:", e);
+            msgEl.innerText = "Registering... (face model issue, proceeding)";
+          }
+        } else {
+          console.warn("Face models not ready — registering without descriptor");
+          msgEl.innerText = "Registering (face models loading, try again for full biometrics)...";
+        }
+
+        // 3. Send everything to server
+        fetch("/registerFace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId, name, password, parentPhone, parentEmail, image, descriptor })
+        }).then(async res => {
+          let data;
+          try { data = await res.json(); } catch(e) { data = { error: "Unexpected server response" }; }
+          scanLine.classList.add("hidden");
+
+          if (res.ok) {
+            document.getElementById("registration-form").classList.add('hidden');
+            document.getElementById("success-screen").classList.remove('hidden');
+            document.getElementById("successId").innerText = studentId;
+            document.getElementById("successName").innerText = name;
+            document.getElementById("successPhone").innerText = parentPhone;
+            document.getElementById("successEmail").innerText = parentEmail;
+          } else {
+            msgEl.innerText = "❌ " + (data.error || "Registration failed");
+            msgEl.className = "text-center text-sm font-bold text-red-500 mt-2";
+            document.getElementById("register-btn").disabled = false;
+            document.getElementById("register-btn").classList.remove("opacity-50");
+          }
+        }).catch(err => {
+          scanLine.classList.add("hidden");
+          msgEl.innerText = "❌ Network Error";
+          msgEl.className = "text-center text-sm font-bold text-red-500 mt-2";
+          document.getElementById("register-btn").disabled = false;
+          document.getElementById("register-btn").classList.remove("opacity-50");
+        });
+      }, 800);
+    }
+
+    function resetRegistration() {
+      // Clear inputs
+      document.getElementById("studentId").value = "";
+      document.getElementById("name").value = "";
+      document.getElementById("parentPhone").value = "";
+      document.getElementById("parentEmail").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("msg").innerText = "";
+      
+      // Clear errors
+      document.getElementById("studentId").classList.remove("input-error");
+      document.getElementById("parentPhone").classList.remove("input-error");
+      document.getElementById("parentEmail").classList.remove("input-error");
+      document.getElementById("studentIdError").innerText = "";
+      document.getElementById("phoneError").innerText = "";
+      
+      // Reset views
+      document.getElementById("success-screen").classList.add('hidden');
+      document.getElementById("registration-form").classList.remove('hidden');
+      document.getElementById("register-btn").disabled = false;
+      document.getElementById("register-btn").classList.remove("opacity-50");
+    }
+
+  </script>
+</body>
+</html>
