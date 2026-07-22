@@ -152,20 +152,24 @@ app.use(
 );
 
 // CORS — allow same-origin and localhost (restrict in production via env)
+// CORS_ORIGIN can be "*" to allow all, or comma-separated URLs e.g. "https://abc.onrender.com,https://myapp.com"
+const rawCorsOrigin = process.env.CORS_ORIGIN || "";
 const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
+  ...(rawCorsOrigin ? rawCorsOrigin.split(",").map(o => o.trim()) : []),
 ];
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow same-origin requests (no Origin header) and allowed origins
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
+      // Allow requests with no origin (mobile apps, curl, Render internal)
+      if (!origin) return callback(null, true);
+      // Allow all origins if CORS_ORIGIN=*
+      if (rawCorsOrigin === "*") return callback(null, true);
+      // Allow listed origins
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "DELETE", "PUT", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
