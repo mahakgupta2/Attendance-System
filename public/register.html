@@ -292,31 +292,46 @@
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         let image = canvas.toDataURL("image/jpeg", 0.6);
 
-        // 2. Extract 128-D face descriptor from live video
+        // 2. Extract 128-D face descriptor from live video (MANDATORY)
         let descriptor = [];
-        if (faceModelsLoaded) {
-          try {
-            msgEl.innerText = "Extracting face signature... Hold still 🔍";
-            const det = await faceapi
-              .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
-              .withFaceLandmarks()
-              .withFaceDescriptor();
+        if (!faceModelsLoaded) {
+          // Face models not loaded — cannot register
+          scanLine.classList.add("hidden");
+          msgEl.innerText = "❌ Face recognition models abhi load ho rahe hain. Kuch seconds baad dobara try karein.";
+          msgEl.className = "text-center text-sm font-bold text-red-500 mt-2";
+          document.getElementById("register-btn").disabled = false;
+          document.getElementById("register-btn").classList.remove("opacity-50");
+          return;
+        }
 
-            if (det) {
-              descriptor = Array.from(det.descriptor);
-              msgEl.innerText = "Face signature captured ✅ Registering...";
-              console.log(`✅ Descriptor extracted: ${descriptor.length} dimensions`);
-            } else {
-              msgEl.innerText = "⚠️ No face detected clearly. Registering without face vector...";
-              console.warn("No face detected during registration");
-            }
-          } catch(e) {
-            console.warn("Descriptor extraction error:", e);
-            msgEl.innerText = "Registering... (face model issue, proceeding)";
+        try {
+          msgEl.innerText = "Face scan ho raha hai... Bilkul still rahein 🔍";
+          const det = await faceapi
+            .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+          if (det) {
+            descriptor = Array.from(det.descriptor);
+            msgEl.innerText = "Face signature captured ✅ Registering...";
+            console.log(`✅ Descriptor extracted: ${descriptor.length} dimensions`);
+          } else {
+            // NO FACE DETECTED — BLOCK REGISTRATION
+            scanLine.classList.add("hidden");
+            msgEl.innerText = "❌ Aapka face detect nahi ho raha! Camera mein apna chehra sahi se dikhayein aur dobara try karein.";
+            msgEl.className = "text-center text-sm font-bold text-red-500 mt-2";
+            document.getElementById("register-btn").disabled = false;
+            document.getElementById("register-btn").classList.remove("opacity-50");
+            return;
           }
-        } else {
-          console.warn("Face models not ready — registering without descriptor");
-          msgEl.innerText = "Registering (face models loading, try again for full biometrics)...";
+        } catch(e) {
+          console.warn("Descriptor extraction error:", e);
+          scanLine.classList.add("hidden");
+          msgEl.innerText = "❌ Face detect karne mein error aaya. Camera check karein aur dobara try karein.";
+          msgEl.className = "text-center text-sm font-bold text-red-500 mt-2";
+          document.getElementById("register-btn").disabled = false;
+          document.getElementById("register-btn").classList.remove("opacity-50");
+          return;
         }
 
         // 3. Send everything to server

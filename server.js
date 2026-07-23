@@ -965,13 +965,17 @@ app.post("/registerFace", registerLimiter, async (req, res) => {
     const existingEmail = await Student.findOne({ parentEmail: parentEmail.trim() });
     if (existingEmail) return res.status(400).json({ error: "This email is already registered." });
 
-    if (descriptor && descriptor.length > 0) {
-      const allStudents = await Student.find({ descriptor: { $exists: true, $not: { $size: 0 } } });
-      for (const student of allStudents) {
-        const distance = getEuclideanDistance(descriptor, student.descriptor);
-        if (distance < 0.55) {
-          return res.status(400).json({ error: "This face is already registered under another account." });
-        }
+    // MANDATORY: Face descriptor required for registration
+    if (!descriptor || !Array.isArray(descriptor) || descriptor.length === 0) {
+      return res.status(400).json({ error: "Face detect nahi hua. Camera mein apna chehra sahi se dikhayein aur dobara try karein." });
+    }
+
+    // Check for duplicate face
+    const allStudents = await Student.find({ descriptor: { $exists: true, $not: { $size: 0 } } });
+    for (const student of allStudents) {
+      const distance = getEuclideanDistance(descriptor, student.descriptor);
+      if (distance < 0.55) {
+        return res.status(400).json({ error: "This face is already registered under another account." });
       }
     }
 
