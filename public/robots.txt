@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://attendance-system-4ekl.onrender.com/sitemap.xml
