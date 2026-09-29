@@ -189,7 +189,7 @@ app.use(express.json({ limit: "15mb" })); // Tightened from 50mb — images are 
 // Explicit route for robots.txt for Googlebot Live Test
 app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
-    res.send("User-agent: *\nAllow: /\nSitemap: https://attendence-app-o5n9.onrender.com/sitemap.xml");
+    res.send("User-agent: *\nAllow: /\nSitemap: https://attendance-system-4ekl.onrender.com/sitemap.xml");
 });
 
 app.use(express.static("public"));
